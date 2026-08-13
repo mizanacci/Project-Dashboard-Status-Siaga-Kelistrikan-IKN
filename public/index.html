@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Siaga Kelistrikan KIPP IKN — Dashboard</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="stage">
+
+  <header class="rail">
+    <div class="rail-brand">
+      <span class="bolt">⚡</span>
+      <div class="rail-titles">
+        <h1>Siaga Kelistrikan <span class="accent">KIPP IKN</span></h1>
+        <p>HUT RI Ke-81 · UID KALTIMRA — UP3 Nusantara</p>
+      </div>
+    </div>
+    <div class="rail-status">
+      <div class="clock"><span id="clockTime">00:00:00</span><span class="clock-tz">WITA</span></div>
+      <div class="conn" id="connBadge"><span class="lamp-dot" id="connDot"></span><span id="connLabel">MEMUAT</span></div>
+      <button class="rail-btn" id="refreshBtn" title="Segarkan sekarang" aria-label="Segarkan data">↻</button>
+      <button class="rail-btn" id="settingsBtn" title="Hubungkan spreadsheet" aria-label="Pengaturan">⚙</button>
+    </div>
+  </header>
+
+  <section class="meter-strip" id="meterStrip"></section>
+
+  <section class="sequencer" aria-label="Jadwal kegiatan 14-17 Agustus">
+    <div class="seq-label">JADWAL · 14–17 AGT 2026</div>
+    <div class="seq-track" id="seqTrack"></div>
+  </section>
+
+  <section class="grid-wrap">
+    <div class="busline">
+      <div class="bus-cap"></div>
+      <div class="bus-row" id="busRow"></div>
+      <div class="bus-cap"></div>
+    </div>
+    <div class="bus-drops" id="busDrops"></div>
+    <div class="locations-grid" id="locationsGrid"></div>
+  </section>
+
+  <section class="panel-config" id="configPanel" hidden>
+    <h2>Hubungkan Spreadsheet</h2>
+    <p class="lede">Tempel tautan CSV publik dari Google Sheets di bawah agar status tiap lokasi diperbarui otomatis tanpa mengubah kode dashboard.</p>
+    <div class="steps">
+      <div>Buat Google Sheet baru. Isi baris pertama sebagai judul kolom: <code>Lokasi, Status_Penyulang, Status_Genset, Status_UPS, Status_COS, Personil_Hadir, Catatan, Update_Terakhir</code>.</div>
+      <div>Di Google Sheets: <code>File → Bagikan → Publikasikan ke web</code>. Pilih sheet ini, format <code>Nilai dipisahkan koma (.csv)</code>, lalu klik Publikasikan.</div>
+      <div>Salin tautan yang muncul dan tempel di kolom ini, lalu klik Simpan &amp; Hubungkan.</div>
+    </div>
+    <div class="config-form">
+      <input type="text" id="sheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv">
+      <button class="btn-primary" id="saveConfigBtn">Simpan &amp; Hubungkan</button>
+    </div>
+    <div class="interval-row">
+      Segarkan otomatis tiap
+      <select id="intervalSelect">
+        <option value="15">15 detik</option>
+        <option value="30" selected>30 detik</option>
+        <option value="60">60 detik</option>
+        <option value="0">Manual saja</option>
+      </select>
+    </div>
+    <div class="config-status" id="configStatus"></div>
+  </section>
+
+  <footer class="foot">
+    <span>Sumber data: rapat koordinasi bersama Otorita IKN, 29 Juli 2026 — dokumen internal UID KALTIMRA / UP3 Nusantara.</span>
+    <button class="foot-link" id="toggleConfigBtn">Hubungkan Spreadsheet</button>
+  </footer>
+
+</div>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="lightbox-frame">
+    <img id="lightboxImg" src="" alt="Lay out lokasi">
+    <div class="lightbox-cap">
+      <span>Lay out lokasi kegiatan — <b id="lightboxCaption"></b></span>
+      <button class="lightbox-close" id="lightboxClose" aria-label="Tutup">✕</button>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
