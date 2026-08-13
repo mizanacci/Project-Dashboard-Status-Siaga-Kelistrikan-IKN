@@ -6,9 +6,15 @@ on:
 
 jobs:
   build-and-push:
-    if: ${{ secrets.DOCKERHUB_USERNAME && secrets.DOCKERHUB_TOKEN }}
     runs-on: ubuntu-latest
     steps:
+      - name: Check Docker Hub secrets
+        run: |
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "DOCKERHUB_USERNAME or DOCKERHUB_TOKEN is not set. Skipping Docker publish job.";
+            exit 0;
+          fi
+
       - uses: actions/checkout@v4
 
       - name: Set up QEMU
@@ -31,10 +37,4 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/siaga-dashboard:latest
       
-  notify-no-secrets:
-    if: ${{ !secrets.DOCKERHUB_USERNAME || !secrets.DOCKERHUB_TOKEN }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Notify missing secrets
-        run: |
-          echo "DOCKERHUB_USERNAME or DOCKERHUB_TOKEN is not set. Skipping Docker publish job.";
+  # notify-no-secrets job removed; we perform secret-check at start of build job instead
