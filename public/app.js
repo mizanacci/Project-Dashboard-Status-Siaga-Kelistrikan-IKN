@@ -41,7 +41,7 @@ const DEFAULT_SHEET_URL = "";
 // STATE
 // =========================================================
 let sheetUrl = DEFAULT_SHEET_URL || null;
-let refreshMs = 30000;
+let refreshMs = 10000;
 let refreshTimer = null;
 let liveData = {};
 let isConnected = false;
@@ -64,14 +64,9 @@ async function init(){
   }
   armRefresh();
 
-  document.getElementById('refreshBtn').addEventListener('click', ()=>sync(true));
   document.getElementById('settingsBtn').addEventListener('click', toggleConfig);
   document.getElementById('toggleConfigBtn').addEventListener('click', toggleConfig);
   document.getElementById('saveConfigBtn').addEventListener('click', onSaveConfig);
-  document.getElementById('intervalSelect').addEventListener('change', e=>{
-    refreshMs = parseInt(e.target.value,10) * 1000;
-    armRefresh();
-  });
 
   document.getElementById('locationsGrid').addEventListener('click', e=>{
     const img = e.target.closest('.card-map');
@@ -95,7 +90,7 @@ async function saveConfig(url){ try{ localStorage.setItem('siaga_sheet_config', 
 
 async function onSaveConfig(){ const url = document.getElementById('sheetUrlInput').value.trim(); const status = document.getElementById('configStatus'); if (!url){ status.textContent = 'Tempel tautan CSV terlebih dahulu.'; status.className='config-status err'; return; } sheetUrl = url; await saveConfig(url); await sync(true); armRefresh(); }
 
-async function sync(manual){ const btn = document.getElementById('refreshBtn'); if (manual) btn.classList.add('spinning'); setConn('loading'); if (!sheetUrl){ setConn('demo'); if (manual) btn.classList.remove('spinning'); renderAll(); return; }
+async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo'); renderAll(); return; }
   try{
     // Clear previous data before fetching new data
     liveData = {};
@@ -114,7 +109,7 @@ async function sync(manual){ const btn = document.getElementById('refreshBtn'); 
     isConnected = matched > 0; lastSync = new Date(); setConn(isConnected ? 'live' : 'nomatch');
     const status = document.getElementById('configStatus'); status.textContent = isConnected ? ('Terhubung — ' + matched + ' dari 5 lokasi cocok.') : 'Tautan berhasil dibaca, tapi tidak ada baris "Lokasi" yang cocok. Periksa ejaan nama lokasi.'; status.className = 'config-status ' + (isConnected ? 'ok' : 'err');
   }catch(err){ isConnected = false; setConn('error'); const status = document.getElementById('configStatus'); status.textContent = 'Gagal memuat: ' + err.message + ' (periksa apakah tautan sudah dipublikasikan sebagai CSV).'; status.className = 'config-status err'; }
-  finally{ if (manual) btn.classList.remove('spinning'); renderAll(); }
+  finally{ renderAll(); }
 }
 
 function armRefresh(){ if (refreshTimer) clearInterval(refreshTimer); if (sheetUrl && refreshMs > 0){ refreshTimer = setInterval(()=>sync(false), refreshMs); } }

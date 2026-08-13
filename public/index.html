@@ -20,7 +20,6 @@
     <div class="rail-status">
       <div class="clock"><span id="clockTime">00:00:00</span><span class="clock-tz">WITA</span></div>
       <div class="conn" id="connBadge"><span class="lamp-dot" id="connDot"></span><span id="connLabel">MEMUAT</span></div>
-      <button class="rail-btn" id="refreshBtn" title="Segarkan sekarang" aria-label="Segarkan data">↻</button>
       <button class="rail-btn" id="settingsBtn" title="Hubungkan spreadsheet" aria-label="Pengaturan">⚙</button>
     </div>
   </header>
@@ -53,15 +52,6 @@
     <div class="config-form">
       <input type="text" id="sheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv">
       <button class="btn-primary" id="saveConfigBtn">Simpan &amp; Hubungkan</button>
-    </div>
-    <div class="interval-row">
-      Segarkan otomatis tiap
-      <select id="intervalSelect">
-        <option value="15">15 detik</option>
-        <option value="30" selected>30 detik</option>
-        <option value="60">60 detik</option>
-        <option value="0">Manual saja</option>
-      </select>
     </div>
     <div class="config-status" id="configStatus"></div>
   </section>
