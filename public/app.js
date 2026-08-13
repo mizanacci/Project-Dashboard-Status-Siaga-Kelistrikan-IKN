@@ -48,6 +48,8 @@ let isConnected = false;
 let lastSync = null;
 const expandedRoles = new Set();
 let lastDataHash = null; // for smart polling
+let unchangedPolls = 0; // counter untuk aggressive refresh
+const MAX_UNCHANGED_POLLS = 3; // force fresh fetch setelah 3 poll tidak berubah
 
 // CACHE CONFIG
 const CACHE_KEY = 'siaga_cache_data';
@@ -132,7 +134,11 @@ async function onSaveConfig(){ const url = document.getElementById('sheetUrlInpu
 
 async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo'); renderAll(); return; }
   try{
-    const proxy = '/api/fetch?u=' + encodeURIComponent(sheetUrl);
+    // Force fresh fetch if too many unchanged polls (aggressive refresh detection)
+    const forceBypassCache = unchangedPolls >= MAX_UNCHANGED_POLLS;
+    const cacheBypass = forceBypassCache ? '&nocache=' + Date.now() : '';
+    
+    const proxy = '/api/fetch?u=' + encodeURIComponent(sheetUrl) + cacheBypass;
     const res = await fetch(proxy, { cache:'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     
@@ -140,11 +146,16 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     const dataHash = res.headers.get('X-Data-Hash');
     const fromCache = res.headers.get('X-From-Cache') === '1';
     
-    // If hash matches and data hasn't changed, skip update
+    // If hash matches and data hasn't changed, skip update (but track unchanged count)
     if (dataHash && lastDataHash === dataHash && !manual) {
+      unchangedPolls++;
+      if (forceBypassCache) unchangedPolls = 0; // reset counter after force fetch
       setConn(isConnected ? 'live' : 'nomatch');
       return;
     }
+    
+    // Data changed! Reset unchanged counter
+    unchangedPolls = 0;
     
     const text = await res.text();
     const rows = parseCSV(text);
@@ -165,7 +176,7 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     
     isConnected = matched > 0; lastSync = new Date(); setConn(isConnected ? 'live' : 'nomatch');
     const status = document.getElementById('configStatus'); 
-    const cacheLabel = fromCache ? ' (dari cache)' : '';
+    const cacheLabel = fromCache ? ' (dari cache)' : ' (fresh)';
     status.textContent = isConnected ? ('Terhubung — ' + matched + ' dari 5 lokasi cocok' + cacheLabel + '.') : 'Tautan berhasil dibaca, tapi tidak ada baris "Lokasi" yang cocok. Periksa ejaan nama lokasi.'; 
     status.className = 'config-status ' + (isConnected ? 'ok' : 'err');
   }catch(err){ isConnected = false; setConn('error'); const status = document.getElementById('configStatus'); status.textContent = 'Gagal memuat: ' + err.message + ' (periksa apakah tautan sudah dipublikasikan sebagai CSV).'; status.className = 'config-status err'; }

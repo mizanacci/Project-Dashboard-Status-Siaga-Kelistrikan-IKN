@@ -6,17 +6,18 @@ const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
-const CACHE_TTL = 30000; // 30 seconds cache
+const CACHE_TTL = 5000; // 5 seconds cache for quick updates
 
 const mime = {
   '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.json': 'application/json', '.txt': 'text/plain'
 };
 
-// Simple in-memory cache with TTL
+// Simple in-memory cache with TTL + hit counter
 const cache = new Map();
 function getCacheKey(u) { return crypto.createHash('md5').update(u).digest('hex'); }
-function getCachedData(u) { const key = getCacheKey(u); const entry = cache.get(key); if (entry && Date.now() - entry.timestamp < CACHE_TTL) return entry.data; cache.delete(key); return null; }
-function setCacheData(u, data) { const key = getCacheKey(u); cache.set(key, { data, timestamp: Date.now() }); }
+function getCachedData(u) { const key = getCacheKey(u); const entry = cache.get(key); if (entry && Date.now() - entry.timestamp < CACHE_TTL) { entry.hits++; return entry.data; } cache.delete(key); return null; }
+function setCacheData(u, data) { const key = getCacheKey(u); cache.set(key, { data, timestamp: Date.now(), hits: 0 }); }
+function invalidateCache(u) { const key = getCacheKey(u); cache.delete(key); }
 
 const server = http.createServer(async (req, res) => {
   try{
@@ -37,7 +38,9 @@ const server = http.createServer(async (req, res) => {
           fromCache = true;
         }
         const hash = crypto.createHash('md5').update(text).digest('hex');
-        res.writeHead(200, {'Content-Type':'text/plain','Access-Control-Allow-Origin':'*','X-Data-Hash':hash,'X-From-Cache':fromCache?'1':'0'});
+        const cacheEntry = cache.get(getCacheKey(u));
+        const cacheHits = cacheEntry ? cacheEntry.hits : 0;
+        res.writeHead(200, {'Content-Type':'text/plain','Access-Control-Allow-Origin':'*','X-Data-Hash':hash,'X-From-Cache':fromCache?'1':'0','X-Cache-Hits':String(cacheHits)});
         res.end(text);
         return;
       }catch(e){ res.writeHead(502, {'Content-Type':'text/plain'}); res.end(e.message); return; }
