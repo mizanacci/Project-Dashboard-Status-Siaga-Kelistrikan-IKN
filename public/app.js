@@ -77,6 +77,19 @@ function saveCacheData(data, hash) {
     localStorage.setItem(CACHE_KEY, JSON.stringify(data));
     localStorage.setItem(CACHE_HASH_KEY, hash);
     localStorage.setItem(CACHE_EXPIRY_KEY, String(Date.now() + CACHE_TTL));
+    console.log('[CACHE] Saved to localStorage, TTL:', CACHE_TTL/1000, 'sec');
+  } catch (e) { console.warn('[CACHE] Save failed:', e.message); }
+}
+
+// Force clear cache
+function clearCache() {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem(CACHE_HASH_KEY);
+    localStorage.removeItem(CACHE_EXPIRY_KEY);
+    lastDataHash = null;
+    unchangedPolls = 0;
+    console.log('[CACHE] Cleared');
   } catch (e) {}
 }
 
@@ -90,19 +103,15 @@ async function init(){
   const saved = await loadConfig();
   if (saved && saved.url) sheetUrl = saved.url;
   
-  // Load from cache if available
-  const cached = loadCachedData();
-  if (cached && cached.data) {
-    liveData = cached.data;
-    isConnected = true;
-    renderAll();
-  } else {
-    renderAll();
-  }
+  // Always render reference data first (don't use old cache)
+  renderAll();
 
   if (sheetUrl){
     document.getElementById('sheetUrlInput').value = sheetUrl;
-    await sync();
+    console.log('[INIT] Fetching fresh data from spreadsheet...');
+    await sync(); // Always fetch fresh on init, don't load from cache
+  } else {
+    console.log('[INIT] No spreadsheet URL configured');
   }
   armRefresh();
 
@@ -157,10 +166,11 @@ async function onSaveConfig(){
 
 async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo'); renderAll(); return; }
   try{
-    const forceBypassCache = unchangedPolls >= MAX_UNCHANGED_POLLS;
+    const forceBypassCache = unchangedPolls >= MAX_UNCHANGED_POLLS || manual;
     const cacheBypass = forceBypassCache ? '&nocache=' + Date.now() : '';
     const proxy = '/api/fetch?u=' + encodeURIComponent(sheetUrl) + cacheBypass;
-    console.log('[SYNC] Fetching from:', sheetUrl.substring(0, 80) + '...');
+    const syncType = manual ? 'MANUAL' : (forceBypassCache ? 'FORCE' : 'AUTO');
+    console.log('[SYNC]', syncType, 'poll#' + unchangedPolls);
     
     const res = await fetch(proxy, { cache:'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -168,17 +178,17 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     const dataHash = res.headers.get('X-Data-Hash');
     const fromCache = res.headers.get('X-From-Cache') === '1';
     
-    if (dataHash && lastDataHash === dataHash && !manual) {
+    // Skip UI update ONLY if: hash match AND auto poll AND not forced
+    if (dataHash && lastDataHash === dataHash && !manual && !forceBypassCache) {
       unchangedPolls++;
-      if (forceBypassCache) unchangedPolls = 0;
       setConn(isConnected ? 'live' : 'nomatch');
-      console.log('[SYNC] Data unchanged, skipped');
+      console.log('[SYNC] Hash match, skipped, poll#' + unchangedPolls);
       return;
     }
     
     unchangedPolls = 0;
     const text = await res.text();
-    console.log('[CSV] Size:', text.length, 'bytes, Lines:', text.split('\n').length);
+    console.log('[CSV] Size:', text.length, 'bytes');
     
     if (!text || text.trim().length === 0) throw new Error('CSV kosong');
     
@@ -192,7 +202,7 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     
     const map = {};
     rows.forEach(r=>{ const lok = normKey(r['lokasi']||''); if (lok) map[lok] = r; });
-    console.log('[MATCH] Found in CSV:', Object.keys(map).join(', '));
+    console.log('[MATCH] Found:', Object.keys(map).join(', '));
 
     let matched = 0;
     const newData = {};
@@ -202,8 +212,6 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
       if (row){ 
         matched++; 
         newData[loc] = { statusPenyulang: row['statuspenyulang'] || '', statusGenset: row['statusgenset'] || '', statusUPS: row['statusups'] || '', statusCOS: row['statuscos'] || '', personilHadir: row['personilhadir'], catatan: row['catatan'] || '', updateTerakhir: row['updateterakhir'] || '' }; 
-      } else {
-        console.warn('[MATCH] Tidak cocok:', loc, '(norm:', normLoc + ')');
       }
     });
 
@@ -211,15 +219,17 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     lastDataHash = dataHash;
     if (matched > 0) saveCacheData(newData, dataHash);
     
-    isConnected = matched > 0; lastSync = new Date(); setConn(isConnected ? 'live' : 'nomatch');
+    isConnected = matched > 0; 
+    lastSync = new Date(); 
+    setConn(isConnected ? 'live' : 'nomatch');
     const status = document.getElementById('configStatus'); 
-    const cacheLabel = fromCache ? ' (cache)' : ' (fresh)';
+    const sourceLabel = fromCache ? 'cache' : 'fresh';
     if (isConnected) {
-      status.textContent = '✓ Terhubung — ' + matched + ' dari 5 lokasi' + cacheLabel;
+      status.textContent = '✓ Terhubung — ' + matched + ' lokasi (' + sourceLabel + ')';
       status.className = 'config-status ok';
-      console.log('[SUCCESS] Sinkron OK!', matched, 'lokasi');
+      console.log('[SUCCESS] Updated! Matched:', matched, 'Source:', sourceLabel);
     } else {
-      status.textContent = '✗ URL OK tapi 0 lokasi cocok. Expected: ' + LOCATIONS_ORDER.slice(0,2).join(', ') + ' ...';
+      status.textContent = '✗ URL OK tapi 0 lokasi cocok';
       status.className = 'config-status err';
       console.error('[ERROR] No matching locations!');
     }
