@@ -97,6 +97,9 @@ async function onSaveConfig(){ const url = document.getElementById('sheetUrlInpu
 
 async function sync(manual){ const btn = document.getElementById('refreshBtn'); if (manual) btn.classList.add('spinning'); setConn('loading'); if (!sheetUrl){ setConn('demo'); if (manual) btn.classList.remove('spinning'); renderAll(); return; }
   try{
+    // Clear previous data before fetching new data
+    liveData = {};
+    
     const proxy = '/api/fetch?u=' + encodeURIComponent(sheetUrl);
     const res = await fetch(proxy, { cache:'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
