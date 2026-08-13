@@ -6,6 +6,7 @@ on:
 
 jobs:
   build-and-push:
+    if: ${{ secrets.DOCKERHUB_USERNAME && secrets.DOCKERHUB_TOKEN }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,3 +30,11 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/siaga-dashboard:latest
+      
+  notify-no-secrets:
+    if: ${{ !secrets.DOCKERHUB_USERNAME || !secrets.DOCKERHUB_TOKEN }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify missing secrets
+        run: |
+          echo "DOCKERHUB_USERNAME or DOCKERHUB_TOKEN is not set. Skipping Docker publish job.";
