@@ -4,11 +4,11 @@
 // =========================================================
 // DATA (images and reference data)
 // =========================================================
-const IMG_OIKN = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA..."; // truncated in source file but preserved in repo
-const IMG_AMPHITHEATER = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA...";
-const IMG_TKB = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA...";
-const IMG_LAPANGAN = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA...";
-const IMG_MFH = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA...";
+const IMG_OIKN = "/images/Kantor OIKN.png";
+const IMG_AMPHITHEATER = "/images/Merdeka Run & Nusantara Vaganza.png";
+const IMG_TKB = "/images/Taman Kusuma Bangsa.png";
+const IMG_LAPANGAN = "/images/Lapangan Plaza Ceremony.png";
+const IMG_MFH = "/images/MFH Kemenko.3.png";
 
 const LOCATIONS_ORDER = [
   "Kantor OIKN",
