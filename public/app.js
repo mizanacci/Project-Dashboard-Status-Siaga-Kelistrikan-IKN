@@ -47,6 +47,36 @@ let liveData = {};
 let isConnected = false;
 let lastSync = null;
 const expandedRoles = new Set();
+let lastDataHash = null; // for smart polling
+
+// CACHE CONFIG
+const CACHE_KEY = 'siaga_cache_data';
+const CACHE_HASH_KEY = 'siaga_cache_hash';
+const CACHE_EXPIRY_KEY = 'siaga_cache_expiry';
+const CACHE_TTL = 120000; // 2 minutes client cache
+
+// Load cached data on init
+function loadCachedData() {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    const cachedHash = localStorage.getItem(CACHE_HASH_KEY);
+    const expiry = localStorage.getItem(CACHE_EXPIRY_KEY);
+    if (cached && expiry && Date.now() < parseInt(expiry, 10)) {
+      lastDataHash = cachedHash;
+      return { data: JSON.parse(cached), hash: cachedHash };
+    }
+  } catch (e) {}
+  return null;
+}
+
+// Save data to cache
+function saveCacheData(data, hash) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    localStorage.setItem(CACHE_HASH_KEY, hash);
+    localStorage.setItem(CACHE_EXPIRY_KEY, String(Date.now() + CACHE_TTL));
+  } catch (e) {}
+}
 
 // =========================================================
 // INIT
@@ -54,10 +84,20 @@ const expandedRoles = new Set();
 async function init(){
   tickClock(); setInterval(tickClock, 1000);
   renderSequencer(); setInterval(renderSequencer, 30000);
-  renderAll();
-
+  
   const saved = await loadConfig();
   if (saved && saved.url) sheetUrl = saved.url;
+  
+  // Load from cache if available
+  const cached = loadCachedData();
+  if (cached && cached.data) {
+    liveData = cached.data;
+    isConnected = true;
+    renderAll();
+  } else {
+    renderAll();
+  }
+
   if (sheetUrl){
     document.getElementById('sheetUrlInput').value = sheetUrl;
     await sync();
@@ -92,22 +132,42 @@ async function onSaveConfig(){ const url = document.getElementById('sheetUrlInpu
 
 async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo'); renderAll(); return; }
   try{
-    // Clear previous data before fetching new data
-    liveData = {};
-    
     const proxy = '/api/fetch?u=' + encodeURIComponent(sheetUrl);
     const res = await fetch(proxy, { cache:'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
+    
+    // Smart polling: check if data changed via hash header
+    const dataHash = res.headers.get('X-Data-Hash');
+    const fromCache = res.headers.get('X-From-Cache') === '1';
+    
+    // If hash matches and data hasn't changed, skip update
+    if (dataHash && lastDataHash === dataHash && !manual) {
+      setConn(isConnected ? 'live' : 'nomatch');
+      return;
+    }
+    
     const text = await res.text();
     const rows = parseCSV(text);
     const map = {};
     rows.forEach(r=>{ map[normKey(r['lokasi']||'')] = r; });
 
     let matched = 0;
-    LOCATIONS_ORDER.forEach(loc=>{ const row = map[normKey(loc)]; if (row){ matched++; liveData[loc] = { statusPenyulang: row['statuspenyulang'] || '', statusGenset: row['statusgenset'] || '', statusUPS: row['statusups'] || '', statusCOS: row['statuscos'] || '', personilHadir: row['personilhadir'], catatan: row['catatan'] || '', updateTerakhir: row['updateterakhir'] || '' }; } });
+    const newData = {};
+    LOCATIONS_ORDER.forEach(loc=>{ const row = map[normKey(loc)]; if (row){ matched++; newData[loc] = { statusPenyulang: row['statuspenyulang'] || '', statusGenset: row['statusgenset'] || '', statusUPS: row['statusups'] || '', statusCOS: row['statuscos'] || '', personilHadir: row['personilhadir'], catatan: row['catatan'] || '', updateTerakhir: row['updateterakhir'] || '' }; } });
 
+    liveData = newData;
+    lastDataHash = dataHash;
+    
+    // Save to cache
+    if (matched > 0) {
+      saveCacheData(newData, dataHash);
+    }
+    
     isConnected = matched > 0; lastSync = new Date(); setConn(isConnected ? 'live' : 'nomatch');
-    const status = document.getElementById('configStatus'); status.textContent = isConnected ? ('Terhubung — ' + matched + ' dari 5 lokasi cocok.') : 'Tautan berhasil dibaca, tapi tidak ada baris "Lokasi" yang cocok. Periksa ejaan nama lokasi.'; status.className = 'config-status ' + (isConnected ? 'ok' : 'err');
+    const status = document.getElementById('configStatus'); 
+    const cacheLabel = fromCache ? ' (dari cache)' : '';
+    status.textContent = isConnected ? ('Terhubung — ' + matched + ' dari 5 lokasi cocok' + cacheLabel + '.') : 'Tautan berhasil dibaca, tapi tidak ada baris "Lokasi" yang cocok. Periksa ejaan nama lokasi.'; 
+    status.className = 'config-status ' + (isConnected ? 'ok' : 'err');
   }catch(err){ isConnected = false; setConn('error'); const status = document.getElementById('configStatus'); status.textContent = 'Gagal memuat: ' + err.message + ' (periksa apakah tautan sudah dipublikasikan sebagai CSV).'; status.className = 'config-status err'; }
   finally{ renderAll(); }
 }

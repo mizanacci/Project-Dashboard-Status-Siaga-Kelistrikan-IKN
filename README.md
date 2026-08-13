@@ -1,6 +1,6 @@
 # Siaga Kelistrikan KIPP IKN — Dashboard (split frontend/backend)
 
-This repo contains a split frontend (under `public/`) and a small Express backend (`server.js`) that proxies CSV fetches to avoid CORS issues when connecting a published Google Sheets CSV.
+This repo contains a split frontend (under `public/`) and a lightweight Node.js backend (`server.js`) that proxies CSV fetches to avoid CORS issues when connecting a published Google Sheets CSV.
 
 Quick start (Node 18+):
 
@@ -19,8 +19,8 @@ npm start
 
 Deployment options:
 
--- Render / Railway / Fly / Heroku: push this repo to GitHub, create a new Web Service, set build command to `npm install` and start command to `npm start`. Set the service port to the environment variable `PORT` (default 3000).
-- Docker: build and run the included Dockerfile:
+-- **Render / Railway / Fly / Heroku**: push this repo to GitHub, create a new Web Service, set build command to `npm install` and start command to `npm start`. Set the service port to the environment variable `PORT` (default 3000).
+- **Docker**: build and run the included Dockerfile:
 
 ```bash
 docker build -t siaga-dashboard .
