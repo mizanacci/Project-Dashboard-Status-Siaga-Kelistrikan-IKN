@@ -130,56 +130,106 @@ function tickClock(){ const now = new Date(); const wita = now.toLocaleTimeStrin
 async function loadConfig(){ try{ const raw = localStorage.getItem('siaga_sheet_config'); return raw ? JSON.parse(raw) : null; }catch(e){ return null; } }
 async function saveConfig(url){ try{ localStorage.setItem('siaga_sheet_config', JSON.stringify({url})); }catch(e){} }
 
-async function onSaveConfig(){ const url = document.getElementById('sheetUrlInput').value.trim(); const status = document.getElementById('configStatus'); if (!url){ status.textContent = 'Tempel tautan CSV terlebih dahulu.'; status.className='config-status err'; return; } sheetUrl = url; await saveConfig(url); await sync(true); armRefresh(); }
+async function onSaveConfig(){ 
+  const url = document.getElementById('sheetUrlInput').value.trim(); 
+  const status = document.getElementById('configStatus'); 
+  
+  // Validate URL format
+  if (!url){ 
+    status.textContent = 'Tempel tautan CSV terlebih dahulu.'; 
+    status.className='config-status err'; 
+    return; 
+  }
+  
+  if (!url.includes('docs.google.com/spreadsheets') || !url.includes('output=csv')) {
+    status.textContent = 'URL tidak valid. Pastikan format: https://docs.google.com/spreadsheets/d/e/…/pub?output=csv'; 
+    status.className='config-status err'; 
+    console.warn('Invalid URL format:', url);
+    return;
+  }
+  
+  sheetUrl = url; 
+  await saveConfig(url); 
+  console.log('Saved spreadsheet URL:', url);
+  await sync(true); 
+  armRefresh(); 
+}
 
 async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo'); renderAll(); return; }
   try{
-    // Force fresh fetch if too many unchanged polls (aggressive refresh detection)
     const forceBypassCache = unchangedPolls >= MAX_UNCHANGED_POLLS;
     const cacheBypass = forceBypassCache ? '&nocache=' + Date.now() : '';
-    
     const proxy = '/api/fetch?u=' + encodeURIComponent(sheetUrl) + cacheBypass;
+    console.log('[SYNC] Fetching from:', sheetUrl.substring(0, 80) + '...');
+    
     const res = await fetch(proxy, { cache:'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     
-    // Smart polling: check if data changed via hash header
     const dataHash = res.headers.get('X-Data-Hash');
     const fromCache = res.headers.get('X-From-Cache') === '1';
     
-    // If hash matches and data hasn't changed, skip update (but track unchanged count)
     if (dataHash && lastDataHash === dataHash && !manual) {
       unchangedPolls++;
-      if (forceBypassCache) unchangedPolls = 0; // reset counter after force fetch
+      if (forceBypassCache) unchangedPolls = 0;
       setConn(isConnected ? 'live' : 'nomatch');
+      console.log('[SYNC] Data unchanged, skipped');
       return;
     }
     
-    // Data changed! Reset unchanged counter
     unchangedPolls = 0;
-    
     const text = await res.text();
+    console.log('[CSV] Size:', text.length, 'bytes, Lines:', text.split('\n').length);
+    
+    if (!text || text.trim().length === 0) throw new Error('CSV kosong');
+    
     const rows = parseCSV(text);
+    console.log('[CSV] Parsed', rows.length, 'data rows');
+    
+    if (rows.length === 0) throw new Error('Tidak ada data di spreadsheet');
+    
+    // Show first row structure
+    if (rows.length > 0) console.log('[CSV] Headers:', Object.keys(rows[0]).join(', '));
+    
     const map = {};
-    rows.forEach(r=>{ map[normKey(r['lokasi']||'')] = r; });
+    rows.forEach(r=>{ const lok = normKey(r['lokasi']||''); if (lok) map[lok] = r; });
+    console.log('[MATCH] Found in CSV:', Object.keys(map).join(', '));
 
     let matched = 0;
     const newData = {};
-    LOCATIONS_ORDER.forEach(loc=>{ const row = map[normKey(loc)]; if (row){ matched++; newData[loc] = { statusPenyulang: row['statuspenyulang'] || '', statusGenset: row['statusgenset'] || '', statusUPS: row['statusups'] || '', statusCOS: row['statuscos'] || '', personilHadir: row['personilhadir'], catatan: row['catatan'] || '', updateTerakhir: row['updateterakhir'] || '' }; } });
+    LOCATIONS_ORDER.forEach(loc=>{ 
+      const normLoc = normKey(loc); 
+      const row = map[normLoc]; 
+      if (row){ 
+        matched++; 
+        newData[loc] = { statusPenyulang: row['statuspenyulang'] || '', statusGenset: row['statusgenset'] || '', statusUPS: row['statusups'] || '', statusCOS: row['statuscos'] || '', personilHadir: row['personilhadir'], catatan: row['catatan'] || '', updateTerakhir: row['updateterakhir'] || '' }; 
+      } else {
+        console.warn('[MATCH] Tidak cocok:', loc, '(norm:', normLoc + ')');
+      }
+    });
 
     liveData = newData;
     lastDataHash = dataHash;
-    
-    // Save to cache
-    if (matched > 0) {
-      saveCacheData(newData, dataHash);
-    }
+    if (matched > 0) saveCacheData(newData, dataHash);
     
     isConnected = matched > 0; lastSync = new Date(); setConn(isConnected ? 'live' : 'nomatch');
     const status = document.getElementById('configStatus'); 
-    const cacheLabel = fromCache ? ' (dari cache)' : ' (fresh)';
-    status.textContent = isConnected ? ('Terhubung — ' + matched + ' dari 5 lokasi cocok' + cacheLabel + '.') : 'Tautan berhasil dibaca, tapi tidak ada baris "Lokasi" yang cocok. Periksa ejaan nama lokasi.'; 
-    status.className = 'config-status ' + (isConnected ? 'ok' : 'err');
-  }catch(err){ isConnected = false; setConn('error'); const status = document.getElementById('configStatus'); status.textContent = 'Gagal memuat: ' + err.message + ' (periksa apakah tautan sudah dipublikasikan sebagai CSV).'; status.className = 'config-status err'; }
+    const cacheLabel = fromCache ? ' (cache)' : ' (fresh)';
+    if (isConnected) {
+      status.textContent = '✓ Terhubung — ' + matched + ' dari 5 lokasi' + cacheLabel;
+      status.className = 'config-status ok';
+      console.log('[SUCCESS] Sinkron OK!', matched, 'lokasi');
+    } else {
+      status.textContent = '✗ URL OK tapi 0 lokasi cocok. Expected: ' + LOCATIONS_ORDER.slice(0,2).join(', ') + ' ...';
+      status.className = 'config-status err';
+      console.error('[ERROR] No matching locations!');
+    }
+  }catch(err){ 
+    isConnected = false; setConn('error'); 
+    const status = document.getElementById('configStatus'); 
+    status.textContent = '✗ Error: ' + err.message; 
+    status.className = 'config-status err';
+    console.error('[ERROR]', err.message);
+  }
   finally{ renderAll(); }
 }
 

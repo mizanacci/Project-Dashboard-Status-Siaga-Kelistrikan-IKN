@@ -45,9 +45,25 @@
     <h2>Hubungkan Spreadsheet</h2>
     <p class="lede">Tempel tautan CSV publik dari Google Sheets di bawah agar status tiap lokasi diperbarui otomatis tanpa mengubah kode dashboard.</p>
     <div class="steps">
-      <div>Buat Google Sheet baru. Isi baris pertama sebagai judul kolom: <code>Lokasi, Status_Penyulang, Status_Genset, Status_UPS, Status_COS, Personil_Hadir, Catatan, Update_Terakhir</code>.</div>
-      <div>Di Google Sheets: <code>File → Bagikan → Publikasikan ke web</code>. Pilih sheet ini, format <code>Nilai dipisahkan koma (.csv)</code>, lalu klik Publikasikan.</div>
-      <div>Salin tautan yang muncul dan tempel di kolom ini, lalu klik Simpan &amp; Hubungkan.</div>
+      <div>
+        <strong>Step 1:</strong> Buat Google Sheet baru. Baris pertama HARUS berisi kolom (case-insensitive):
+        <code>Lokasi, Status_Penyulang, Status_Genset, Status_UPS, Status_COS, Personil_Hadir, Catatan, Update_Terakhir</code>
+        <br><strong>Nama lokasi yang valid (persis):</strong>
+        <div style="font-family:monospace; background:#f0f0f0; padding:5px; margin:5px 0; font-size:11px;">
+          • Kantor OIKN<br>
+          • Amphitheater Plaza Ceremony<br>
+          • Taman Kusuma Bangsa<br>
+          • Lapangan Plaza Ceremony<br>
+          • MFH Kemenko.3
+        </div>
+      </div>
+      <div>
+        <strong>Step 2:</strong> Di Google Sheets: <code>File → Bagikan → Publikasikan ke web</code>. 
+        Pilih sheet ini, format <code>Nilai dipisahkan koma (.csv)</code>, lalu klik Publikasikan.
+      </div>
+      <div>
+        <strong>Step 3:</strong> Salin tautan yang muncul (format: <code>https://docs.google.com/spreadsheets/d/e/.../pub?output=csv</code>) dan tempel di bawah.
+      </div>
     </div>
     <div class="config-form">
       <input type="text" id="sheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv">
