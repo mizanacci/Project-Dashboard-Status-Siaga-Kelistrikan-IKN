@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-const CACHE_TTL = 5000; // 5 seconds cache for quick updates
+const CACHE_TTL = 2000; // 2 seconds - very short to catch spreadsheet changes quickly
 const cache = new Map();
 
 function getCacheKey(u) { return crypto.createHash('md5').update(u).digest('hex'); }

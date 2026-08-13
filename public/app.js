@@ -49,7 +49,7 @@ let lastSync = null;
 const expandedRoles = new Set();
 let lastDataHash = null; // for smart polling
 let unchangedPolls = 0; // counter untuk aggressive refresh
-const MAX_UNCHANGED_POLLS = 3; // force fresh fetch setelah 3 poll tidak berubah
+const MAX_UNCHANGED_POLLS = 2; // reduce to 2 for faster refresh detection
 
 // CACHE CONFIG
 const CACHE_KEY = 'siaga_cache_data';
@@ -167,10 +167,10 @@ async function onSaveConfig(){
 async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo'); renderAll(); return; }
   try{
     const forceBypassCache = unchangedPolls >= MAX_UNCHANGED_POLLS || manual;
-    const cacheBypass = forceBypassCache ? '&nocache=' + Date.now() : '';
+    const cacheBypass = (forceBypassCache || manual) ? '&t=' + Date.now() : '';
     const proxy = '/api/fetch?u=' + encodeURIComponent(sheetUrl) + cacheBypass;
     const syncType = manual ? 'MANUAL' : (forceBypassCache ? 'FORCE' : 'AUTO');
-    console.log('[SYNC]', syncType, 'poll#' + unchangedPolls);
+    console.log('[SYNC]', syncType, 'refresh, polls:', unchangedPolls);
     
     const res = await fetch(proxy, { cache:'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -178,31 +178,33 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     const dataHash = res.headers.get('X-Data-Hash');
     const fromCache = res.headers.get('X-From-Cache') === '1';
     
-    // Skip UI update ONLY if: hash match AND auto poll AND not forced
-    if (dataHash && lastDataHash === dataHash && !manual && !forceBypassCache) {
+    console.log('[FETCH] Hash:', dataHash?.substring(0,6), 'vs Last:', lastDataHash?.substring(0,6), 'Cache:', fromCache);
+    
+    // Skip UI update ONLY if: hash match AND auto poll AND not forced  
+    if (dataHash && lastDataHash && dataHash === lastDataHash && !manual && !forceBypassCache) {
       unchangedPolls++;
       setConn(isConnected ? 'live' : 'nomatch');
-      console.log('[SYNC] Hash match, skipped, poll#' + unchangedPolls);
+      console.log('[SKIP] Hash unchanged, polls:', unchangedPolls);
       return;
     }
     
+    console.log('[UPDATE] Hash changed or manual refresh');
     unchangedPolls = 0;
     const text = await res.text();
-    console.log('[CSV] Size:', text.length, 'bytes');
+    console.log('[CSV] Received', text.length, 'bytes');
     
     if (!text || text.trim().length === 0) throw new Error('CSV kosong');
     
     const rows = parseCSV(text);
-    console.log('[CSV] Parsed', rows.length, 'data rows');
+    console.log('[CSV] Parsed', rows.length, 'rows');
     
-    if (rows.length === 0) throw new Error('Tidak ada data di spreadsheet');
+    if (rows.length === 0) throw new Error('Tidak ada data');
     
-    // Show first row structure
     if (rows.length > 0) console.log('[CSV] Headers:', Object.keys(rows[0]).join(', '));
     
     const map = {};
     rows.forEach(r=>{ const lok = normKey(r['lokasi']||''); if (lok) map[lok] = r; });
-    console.log('[MATCH] Found:', Object.keys(map).join(', '));
+    console.log('[MATCH] Found in CSV:', Object.keys(map).length > 0 ? Object.keys(map).join(', ') : 'NONE');
 
     let matched = 0;
     const newData = {};
@@ -217,33 +219,52 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
 
     liveData = newData;
     lastDataHash = dataHash;
-    if (matched > 0) saveCacheData(newData, dataHash);
+    
+    if (matched > 0) {
+      saveCacheData(newData, dataHash);
+      console.log('[CACHE] Saved', matched, 'locations');
+    }
     
     isConnected = matched > 0; 
     lastSync = new Date(); 
     setConn(isConnected ? 'live' : 'nomatch');
+    
     const status = document.getElementById('configStatus'); 
     const sourceLabel = fromCache ? 'cache' : 'fresh';
+    
     if (isConnected) {
-      status.textContent = '✓ Terhubung — ' + matched + ' lokasi (' + sourceLabel + ')';
+      status.textContent = '✓ ' + matched + '/5 lokasi (' + sourceLabel + ')';
       status.className = 'config-status ok';
-      console.log('[SUCCESS] Updated! Matched:', matched, 'Source:', sourceLabel);
+      console.log('[SUCCESS] Synced', matched, 'locations from', sourceLabel, '- RENDERING UI');
     } else {
-      status.textContent = '✗ URL OK tapi 0 lokasi cocok';
+      status.textContent = '✗ 0 lokasi cocok - check column names';
       status.className = 'config-status err';
-      console.error('[ERROR] No matching locations!');
+      console.error('[ERROR] No locations matched!');
     }
   }catch(err){ 
-    isConnected = false; setConn('error'); 
+    isConnected = false; 
+    setConn('error'); 
     const status = document.getElementById('configStatus'); 
     status.textContent = '✗ Error: ' + err.message; 
     status.className = 'config-status err';
-    console.error('[ERROR]', err.message);
+    console.error('[ERROR] Sync failed:', err.message);
   }
-  finally{ renderAll(); }
+  finally{ 
+    console.log('[FINAL] Calling renderAll()...');
+    renderAll(); 
+  }
 }
 
-function armRefresh(){ if (refreshTimer) clearInterval(refreshTimer); if (sheetUrl && refreshMs > 0){ refreshTimer = setInterval(()=>sync(false), refreshMs); } }
+function armRefresh(){ 
+  if (refreshTimer) clearInterval(refreshTimer); 
+  if (sheetUrl && refreshMs > 0){ 
+    console.log('[TIMER] Starting auto-refresh every', refreshMs/1000, 'seconds');
+    refreshTimer = setInterval(()=>{
+      console.log('[TIMER] Auto-refresh triggered');
+      sync(false);
+    }, refreshMs); 
+  }
+}
 
 function setConn(state){ const dot = document.getElementById('connDot'); const label = document.getElementById('connLabel'); const badge = document.getElementById('connBadge'); dot.className = 'lamp-dot'; if (state === 'live'){ dot.classList.add('s-ok','live'); label.textContent='TERHUBUNG · LANGSUNG'; } else if (state === 'loading'){ label.textContent='MENYINKRONKAN…'; } else if (state === 'demo'){ label.textContent='DATA REFERENSI'; } else if (state === 'nomatch'){ dot.classList.add('s-warn'); label.textContent='TERHUBUNG · 0 COCOK'; } else if (state === 'error'){ dot.classList.add('s-crit'); label.textContent='GAGAL SINKRON'; } badge.title = lastSync ? ('Sinkron terakhir: ' + lastSync.toLocaleTimeString('id-ID',{timeZone:'Asia/Makassar'}) + ' WITA') : ''; }
 

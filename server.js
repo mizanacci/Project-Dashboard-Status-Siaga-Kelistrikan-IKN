@@ -6,7 +6,7 @@ const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
-const CACHE_TTL = 5000; // 5 seconds cache for quick updates
+const CACHE_TTL = 2000; // 2 seconds - very short to catch spreadsheet changes quickly
 
 const mime = {
   '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.json': 'application/json', '.txt': 'text/plain'
