@@ -11,7 +11,7 @@
 
   <header class="rail">
     <div class="rail-brand">
-      <span class="bolt">⚡</span>
+      <img class="logo-pln" src="/images/Logo_PLN.png" alt="Logo PLN" title="Perusahaan Listrik Negara">
       <div class="rail-titles">
         <h1>Siaga Kelistrikan <span class="accent">KIPP IKN</span></h1>
         <p>HUT RI Ke-81 · UID KALTIMRA — UP3 Nusantara</p>
@@ -20,7 +20,6 @@
     <div class="rail-status">
       <div class="clock"><span id="clockTime">00:00:00</span><span class="clock-tz">WITA</span></div>
       <div class="conn" id="connBadge"><span class="lamp-dot" id="connDot"></span><span id="connLabel">MEMUAT</span></div>
-      <button class="rail-btn" id="settingsBtn" title="Hubungkan spreadsheet" aria-label="Pengaturan">⚙</button>
     </div>
   </header>
 
@@ -41,7 +40,19 @@
     <div class="locations-grid" id="locationsGrid"></div>
   </section>
 
-  <section class="panel-config" id="configPanel" hidden>
+  <section class="monitor-panel">
+    <h3>RIGATA Monitoring · 3-Phase Electrical</h3>
+    <div class="rigata-grid" id="rigataPanelContent">
+      <p style="color:var(--text-faint);padding:20px;text-align:center;">Loading RIGATA data...</p>
+    </div>
+  </section>
+
+  <section class="load-panel">
+    <h3>Load Monitoring · Power Trends</h3>
+    <div id="loadPanelContent">
+      <p style="color:var(--text-faint);padding:20px;text-align:center;">Loading Load data...</p>
+    </div>
+  </section>
     <h2>Hubungkan Spreadsheet</h2>
     <p class="lede">Tempel tautan CSV dari Google Sheets di bawah agar status tiap lokasi diperbarui otomatis tanpa mengubah kode dashboard. Gunakan endpoint <code>gviz</code> atau <code>export</code> (bukan "Publish to web") agar data tidak basi karena cache.</p>
     <div class="steps">

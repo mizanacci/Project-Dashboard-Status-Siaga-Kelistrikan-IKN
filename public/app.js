@@ -37,7 +37,7 @@ const AGENDA = [
 
 // Terhubung otomatis ke spreadsheet (endpoint gviz — cache jauh lebih fresh
 // daripada link /pub?output=csv). Pastikan sheet di-share "Anyone with the link → Viewer".
-const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1s_h8zBXKELoppqKSaSccK4jWhyZpBER4zL96PU-O7f4/gviz/tq?tqx=out:csv&gid=1897496511";
+const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTuGm3GCP1mSd4_n4GkzUUlWRATJYCk2Gt0KOQma_fgaZwCGZ3a7LGFjdiLfukga5TJZjiSK9YxFaap/pub?gid=1897496511&single=true&output=csv";
 
 // =========================================================
 // STATE
@@ -102,31 +102,21 @@ async function init(){
   tickClock(); setInterval(tickClock, 1000);
   renderSequencer(); setInterval(renderSequencer, 30000);
 
-  // Urutan prioritas URL:
-  // 1) URL tersimpan di localStorage (kalau ada)
-  // 2) DEFAULT_SHEET_URL hardcode — DIPAKSA menang supaya seragam di semua perangkat.
-  //    Hapus baris "if (DEFAULT_SHEET_URL) ..." di bawah kalau kamu ingin URL
-  //    yang disimpan lewat tombol ⚙ tetap diprioritaskan.
-  const saved = await loadConfig();
-  if (saved && saved.url) sheetUrl = saved.url;
-  if (DEFAULT_SHEET_URL) sheetUrl = DEFAULT_SHEET_URL;
+  // Auto-connect ke DEFAULT_SHEET_URL (hardcoded)
+  sheetUrl = DEFAULT_SHEET_URL;
 
-  // Always render reference data first (don't use old cache)
+  // Always render reference data first
   renderAll();
 
   if (sheetUrl){
-    document.getElementById('sheetUrlInput').value = sheetUrl;
     console.log('[INIT] Fetching fresh data from spreadsheet...');
-    await sync(); // Always fetch fresh on init, don't load from cache
+    await sync(); // Always fetch fresh on init
   } else {
     console.log('[INIT] No spreadsheet URL configured');
   }
   armRefresh();
 
-  document.getElementById('settingsBtn').addEventListener('click', toggleConfig);
-  document.getElementById('toggleConfigBtn').addEventListener('click', toggleConfig);
-  document.getElementById('saveConfigBtn').addEventListener('click', onSaveConfig);
-
+  // Lightbox events untuk image zoom
   document.getElementById('locationsGrid').addEventListener('click', e=>{
     const img = e.target.closest('.card-map');
     if (!img) return;
@@ -228,7 +218,30 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
       const row = map[normLoc]; 
       if (row){ 
         matched++; 
-        newData[loc] = { statusPenyulang: row['statuspenyulang'] || '', statusGenset: row['statusgenset'] || '', statusUPS: row['statusups'] || '', statusCOS: row['statuscos'] || '', personilHadir: row['personilhadir'], catatan: row['catatan'] || '', updateTerakhir: row['updateterakhir'] || '' }; 
+        newData[loc] = { 
+          statusPenyulang: row['statuspenyulang'] || '', 
+          statusGenset: row['statusgenset'] || '', 
+          statusUPS: row['statusups'] || '', 
+          statusCOS: row['statuscos'] || '', 
+          personilHadir: row['personilhadir'], 
+          catatan: row['catatan'] || '', 
+          updateTerakhir: row['updateterakhir'] || '',
+          // RIGATA: 3-phase electrical monitoring
+          teganganR: parseFloat(row['tegangan r']||'0') || 0,
+          teganganS: parseFloat(row['tegangan s']||'0') || 0,
+          teganganT: parseFloat(row['tegangan t']||'0') || 0,
+          teganganN: parseFloat(row['tegangan n']||'0') || 0,
+          arusR: parseFloat(row['arus r']||'0') || 0,
+          arusS: parseFloat(row['arus s']||'0') || 0,
+          arusT: parseFloat(row['arus t']||'0') || 0,
+          arusN: parseFloat(row['arus n']||'0') || 0,
+          temperature: parseFloat(row['temperature']||'0') || 0,
+          frekuensi: parseFloat(row['frekuensi (hz)']||row['frekuensi']||'0') || 0,
+          powerFactor: parseFloat(row['power factor']||'0') || 0,
+          // Load: power monitoring
+          dayaBeban: parseFloat(row['daya beban']||'0') || 0,
+          daya: parseFloat(row['daya (w)']||row['daya']||'0') || 0
+        }; 
       }
     });
 
@@ -291,7 +304,7 @@ function statusClass(v){ const n = normKey(v); if (n === 'normal') return 's-ok'
 function overallStatus(loc){ const live = liveData[loc]; if (!isConnected || !live) return ''; const ref = REFERENCE_DATA[loc]; const vals = [live.statusPenyulang, live.statusGenset, live.statusUPS]; if (ref.cos) vals.push(live.statusCOS); const norm = vals.map(normKey); if (norm.includes('gangguan')) return 's-crit'; if (norm.some(v=>v==='siaga'||v==='')) return 's-warn'; if (norm.length && norm.every(v=>v==='normal')) return 's-ok'; return ''; }
 function escapeHtml(s){ return (s==null?'':s.toString()).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-function renderAll(){ renderMeters(); renderBusbar(); renderCards(); }
+function renderAll(){ renderMeters(); renderBusbar(); renderCards(); renderRigata(); renderLoad(); }
 
 function renderMeters(){ const totalPersonil = LOCATIONS_ORDER.reduce((a,l)=>a+REFERENCE_DATA[l].personilTotal,0); let hadir = 0, hasAnyHadir = false; LOCATIONS_ORDER.forEach(l=>{ const v = liveData[l] && liveData[l].personilHadir; if (v !== undefined && v !== null && v !== '' && !isNaN(v)){ hadir += parseInt(v,10); hasAnyHadir = true; } }); let ok=0,warn=0,crit=0,off=0; LOCATIONS_ORDER.forEach(l=>{ const s = overallStatus(l); if (s==='s-ok') ok++; else if (s==='s-warn') warn++; else if (s==='s-crit') crit++; else off++; });
   const meters = [ { label:'Lokasi Siaga', value:'5', unit:'titik' }, { label:'Personil (5 lokasi)', value: (isConnected && hasAnyHadir ? hadir+' / '+totalPersonil : totalPersonil), unit:'orang', title:'Dijumlahkan dari rincian 5 lokasi pada Slide 6–10. Ringkasan Eksekutif (Slide 3) mencatat 35 orang — mohon verifikasi ke tim lapangan.' }, { label:'Unit UPS', value:'5', unit:'unit', title:'200 kVA×1, 100 kVA×1, 20 kVA×3 (Slide 3)' }, { label:'Genset PLN', value:'1', unit:'× 200 kVA', title:'Genset cadangan milik PLN di Lapangan Plaza Ceremony (Slide 3 & 9)' } ];
@@ -321,6 +334,87 @@ function renderCard(loc){ const ref = REFERENCE_DATA[loc]; const live = liveData
   const syncHtml = (isConnected && live && live.updateTerakhir) ? `<div class="sync-line">Update oleh petugas: ${escapeHtml(live.updateTerakhir)}</div>` : '';
 
   return `\n  <div class="card ${overall}">\n    <div class="card-head">\n      <div>\n        <div class="card-tag">${ref.tag}</div>\n        <div class="card-name">${escapeHtml(loc)}</div>\n        <div class="card-kegiatan">Kegiatan: <strong>${escapeHtml(ref.kegiatan)}</strong></div>\n        <div class="card-kegiatan">${escapeHtml(ref.jadwal)}</div>\n      </div>\n      <span class="card-badge ${overall}">${overallLabel}</span>\n    </div>\n\n    <div class="card-map-wrap">\n      <img class="card-map" src="${ref.image}" data-name="${escapeHtml(loc)}" alt="Lay out lokasi kegiatan ${escapeHtml(loc)}" loading="lazy">\n      <span class="card-map-tag">Lay Out Lokasi</span>\n      <span class="card-map-zoom">⤢</span>\n    </div>\n\n    <div class="lamp-row">${lamps}</div>\n\n    <div class="spec-grid">\n      <div class="spec-item"><span class="k">Penyulang Utama</span><span class="v">${escapeHtml(ref.penyulangUtama)}</span></div>\n      <div class="spec-item"><span class="k">Penyulang Backup</span><span class="v">${escapeHtml(ref.penyulangBackup)}</span></div>\n      <div class="spec-item"><span class="k">Genset Backup</span><span class="v">${escapeHtml(ref.genset)}</span></div>\n      <div class="spec-item"><span class="k">UPS Backup</span><span class="v">${escapeHtml(ref.ups)}</span></div>\n      ${ref.cos ? `<div class="spec-item"><span class="k">COS</span><span class="v">${escapeHtml(ref.cos)}</span></div>` : ''}\n    </div>\n\n    <div class="gauge-wrap">\n      <div class="gauge-top"><span>Personil hadir</span><span class="num">${hadir!==null ? hadir : '—'} / ${ref.personilTotal}</span></div>\n      <div class="gauge-track"><div class="gauge-fill ${hadir===null?'unknown':''}" style="width:${hadir!==null?pct:100}%"></div></div>\n    </div>\n\n    <details class="roles" data-loc="${escapeHtml(loc)}">\n      <summary>Rincian personil siaga (${ref.personilTotal} orang)</summary>\n      <div class="roles-list">${rolesHtml}</div>\n    </details>\n\n    ${noteHtml}\n    ${syncHtml}\n  </div>`;
+}
+
+// RIGATA Panel: 3-Phase Electrical Monitoring
+function renderRigata(){
+  const panel = document.getElementById('rigataPanelContent');
+  if (!panel) return;
+  
+  if (!isConnected) {
+    panel.innerHTML = '<p style="color:var(--text-gray);font-size:12px;padding:10px;">Menunggu data RIGATA dari spreadsheet...</p>';
+    return;
+  }
+  
+  const html = LOCATIONS_ORDER.map(loc => {
+    const live = liveData[loc];
+    if (!live) return '';
+    
+    const vr = live.teganganR || 0, vs = live.teganganS || 0, vt = live.teganganT || 0;
+    const ir = live.arusR || 0, is = live.arusS || 0, it = live.arusT || 0;
+    const temp = live.temperature || 0, freq = live.frekuensi || 50, pf = live.powerFactor || 0;
+    
+    return `
+    <div class="rigata-item">
+      <div class="rigata-head">
+        <div class="rigata-name">${loc.split(' ')[0]}</div>
+        <div class="rigata-badge">LIVE</div>
+      </div>
+      <div class="rigata-metrics">
+        <div><span>V R</span><strong>${vr.toFixed(1)} V</strong></div>
+        <div><span>V S</span><strong>${vs.toFixed(1)} V</strong></div>
+        <div><span>V T</span><strong>${vt.toFixed(1)} V</strong></div>
+        <div><span>I R</span><strong>${ir.toFixed(1)} A</strong></div>
+        <div><span>I S</span><strong>${is.toFixed(1)} A</strong></div>
+        <div><span>I T</span><strong>${it.toFixed(1)} A</strong></div>
+        <div><span>Freq</span><strong>${freq.toFixed(2)} Hz</strong></div>
+        <div><span>PF</span><strong>${pf.toFixed(2)}</strong></div>
+        <div><span>Temp</span><strong>${temp.toFixed(1)}°C</strong></div>
+      </div>
+    </div>`;
+  }).join('');
+  
+  panel.innerHTML = html || '<p style="color:var(--text-faint);">No RIGATA data available</p>';
+}
+
+// Load Panel: Power Monitoring & Trends
+function renderLoad(){
+  const panel = document.getElementById('loadPanelContent');
+  if (!panel) return;
+  
+  if (!isConnected) {
+    panel.innerHTML = '<p style="color:var(--text-gray);font-size:12px;padding:10px;">Menunggu data Load dari spreadsheet...</p>';
+    return;
+  }
+  
+  let totalBeban = 0, totalDaya = 0;
+  LOCATIONS_ORDER.forEach(loc => {
+    const live = liveData[loc];
+    if (live) {
+      totalBeban += live.dayaBeban || 0;
+      totalDaya += live.daya || 0;
+    }
+  });
+  
+  const html = `
+    <div class="load-stats">
+      <div class="stat-card">
+        <span class="stat-label">Total Beban</span>
+        <span class="stat-value">${totalBeban.toFixed(0)} <span class="unit">kW</span></span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Total Daya</span>
+        <span class="stat-value">${(totalDaya/1000).toFixed(1)} <span class="unit">kW</span></span>
+      </div>
+    </div>
+    <div class="load-chart-placeholder">
+      <div style="text-align:center;padding:20px;color:var(--text-faint);">
+        📊 Grafik Load Trend (Real-time updates setiap 10 detik)
+      </div>
+    </div>
+  `;
+  
+  panel.innerHTML = html;
 }
 
 init();
