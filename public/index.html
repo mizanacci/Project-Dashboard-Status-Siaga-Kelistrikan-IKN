@@ -76,6 +76,8 @@
   .status-dot{width:10px;height:10px;border-radius:50%;background:var(--warning);animation:pulse 2s ease-in-out infinite;}
   .status-badge.connected .status-dot{background:var(--success);}
   .status-badge.error .status-dot{background:var(--danger);}
+  .header-btn{width:44px;height:44px;border:1px solid var(--border-light);background:var(--light-bg);border-radius:10px;cursor:pointer;font-size:18px;transition:.3s;color:var(--text-gray);font-weight:700;display:grid;place-items:center;}
+  .header-btn:hover{background:var(--lighter-bg);color:var(--primary);transform:rotate(180deg);}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
 
   /* Metrics Cards */
