@@ -8,6 +8,91 @@ function getCachedData(u) { const key = getCacheKey(u); const entry = cache.get(
 function setCacheData(u, data) { const key = getCacheKey(u); cache.set(key, { data, timestamp: Date.now(), hits: 0 }); }
 function invalidateCache(u) { const key = getCacheKey(u); cache.delete(key); }
 
+function splitCsvLine(line) {
+  const out = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      out.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  out.push(current);
+  return out.map(v => v.trim());
+}
+
+function parseStructuredSheet(text) {
+  const rows = String(text || '').replace(/\r/g, '').split('\n').filter(line => line.trim().length > 0).map(splitCsvLine);
+  if (!rows.length) return { locations: {}, rigata: [], loadSeries: [] };
+
+  const locations = {};
+  const rigata = [];
+  const loadSeries = [];
+
+  rows.slice(1).forEach((row) => {
+    const lokasi = (row[0] || '').trim();
+    const hasStatusCell = [1, 2, 3, 4].some(index => (row[index] || '').trim());
+
+    if (lokasi && hasStatusCell) {
+      const entry = {
+        lokasi,
+        statusPenyulang: (row[1] || '').trim(),
+        statusGenset: (row[2] || '').trim(),
+        statusUPS: (row[3] || '').trim(),
+        statusCOS: (row[4] || '').trim(),
+        personilHadir: (row[5] || '').trim(),
+        catatan: (row[6] || '').trim(),
+        updateTerakhir: (row[7] || '').trim(),
+        dayaBeban: (row[8] || '').trim()
+      };
+
+      if (!['RINGKASAN', 'Total Personil Hadir', 'Total Personil Dibutuhkan', '% Kehadiran'].includes(lokasi)) {
+        locations[lokasi] = entry;
+        if (entry.dayaBeban) {
+          const loadValue = Number.parseFloat(String(entry.dayaBeban).replace(/[A-Za-z%\s]/g, '').replace(',', '.')) || 0;
+          loadSeries.push({ location: lokasi, value: loadValue, label: entry.dayaBeban });
+        }
+      }
+    }
+
+    for (let i = 0; i < row.length; i += 1) {
+      const cell = (row[i] || '').trim();
+      if (!cell || !cell.toLowerCase().includes('rigata')) continue;
+
+      const locationCandidate = (row[i - 1] || row[10] || '').trim() || 'Lapangan Plaza Ceremony';
+      const item = {
+        location: locationCandidate,
+        name: cell,
+        tegangan: [row[i + 1], row[i + 2], row[i + 3], row[i + 4]].map(v => (v || '').trim()).filter(Boolean),
+        arus: [row[i + 5], row[i + 6], row[i + 7], row[i + 8]].map(v => (v || '').trim()).filter(Boolean),
+        temperature: (row[i + 9] || '').trim()
+      };
+      if (item.tegangan.length || item.arus.length || item.temperature) {
+        rigata.push(item);
+      }
+    }
+  });
+
+  return { locations, rigata, loadSeries };
+}
+
 module.exports = async function handler(req, res) {
   try {
     const u = req.query && req.query.u;
@@ -15,8 +100,8 @@ module.exports = async function handler(req, res) {
       res.statusCode = 400; res.end('missing url param `u`'); return;
     }
     const target = Array.isArray(u) ? u[0] : u;
-    
-    // Check cache first
+    const format = (req.query && req.query.format) ? String(req.query.format).toLowerCase() : 'text';
+
     let text = getCachedData(target);
     let fromCache = false;
     if (!text) {
@@ -27,16 +112,26 @@ module.exports = async function handler(req, res) {
     } else {
       fromCache = true;
     }
-    
+
     const hash = crypto.createHash('md5').update(text).digest('hex');
     const cacheEntry = cache.get(getCacheKey(target));
     const cacheHits = cacheEntry ? cacheEntry.hits : 0;
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('X-Data-Hash', hash);
     res.setHeader('X-From-Cache', fromCache ? '1' : '0');
     res.setHeader('X-Cache-Hits', String(cacheHits));
-    res.statusCode = 200; res.end(text);
+
+    if (format === 'json') {
+      const payload = parseStructuredSheet(text);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.statusCode = 200;
+      res.end(JSON.stringify(payload));
+      return;
+    }
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.statusCode = 200;
+    res.end(text);
   } catch (err) {
     res.statusCode = 502; res.end(err.message || String(err));
   }

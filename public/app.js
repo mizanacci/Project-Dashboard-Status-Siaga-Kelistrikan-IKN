@@ -46,6 +46,8 @@ let sheetUrl = DEFAULT_SHEET_URL || null;
 let refreshMs = 10000;
 let refreshTimer = null;
 let liveData = {};
+let rigataData = [];
+let loadHistory = [];
 let isConnected = false;
 let lastSync = null;
 const expandedRoles = new Set();
@@ -183,7 +185,7 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
   try{
     const forceBypassCache = unchangedPolls >= MAX_UNCHANGED_POLLS || manual;
     const cacheBypass = (forceBypassCache || manual) ? '&t=' + Date.now() : '';
-    const proxy = '/api/fetch?u=' + encodeURIComponent(sheetUrl) + cacheBypass;
+    const proxy = '/api/fetch?u=' + encodeURIComponent(sheetUrl) + cacheBypass + '&format=json';
     const syncType = manual ? 'MANUAL' : (forceBypassCache ? 'FORCE' : 'AUTO');
     console.log('[SYNC]', syncType, 'refresh, polls:', unchangedPolls);
     
@@ -195,7 +197,6 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     
     console.log('[FETCH] Hash:', dataHash?.substring(0,6), 'vs Last:', lastDataHash?.substring(0,6), 'Cache:', fromCache);
     
-    // Skip UI update ONLY if: hash match AND auto poll AND not forced  
     if (dataHash && lastDataHash && dataHash === lastDataHash && !manual && !forceBypassCache) {
       unchangedPolls++;
       setConn(isConnected ? 'live' : 'nomatch');
@@ -205,21 +206,17 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     
     console.log('[UPDATE] Hash changed or manual refresh');
     unchangedPolls = 0;
-    const text = await res.text();
-    console.log('[CSV] Received', text.length, 'bytes');
-    
-    if (!text || text.trim().length === 0) throw new Error('CSV kosong');
-    
-    const rows = parseCSV(text);
-    console.log('[CSV] Parsed', rows.length, 'rows');
-    
-    if (rows.length === 0) throw new Error('Tidak ada data');
-    
-    if (rows.length > 0) console.log('[CSV] Headers:', Object.keys(rows[0]).join(', '));
-    
+
+    const payload = await res.json();
+    const sourceLocations = payload && payload.locations ? payload.locations : {};
+    const sourceRigata = payload && Array.isArray(payload.rigata) ? payload.rigata : [];
+    const sourceLoadSeries = payload && Array.isArray(payload.loadSeries) ? payload.loadSeries : [];
+
     const map = {};
-    rows.forEach(r=>{ const lok = normKey(r['lokasi']||''); if (lok) map[lok] = r; });
-    console.log('[MATCH] Found in CSV:', Object.keys(map).length > 0 ? Object.keys(map).join(', ') : 'NONE');
+    Object.keys(sourceLocations).forEach(key => {
+      const loc = key.trim();
+      if (loc) map[normKey(loc)] = sourceLocations[key];
+    });
 
     let matched = 0;
     const newData = {};
@@ -228,11 +225,31 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
       const row = map[normLoc]; 
       if (row){ 
         matched++; 
-        newData[loc] = { statusPenyulang: row['statuspenyulang'] || '', statusGenset: row['statusgenset'] || '', statusUPS: row['statusups'] || '', statusCOS: row['statuscos'] || '', personilHadir: row['personilhadir'], catatan: row['catatan'] || '', updateTerakhir: row['updateterakhir'] || '' }; 
+        newData[loc] = {
+          statusPenyulang: row.statusPenyulang || '',
+          statusGenset: row.statusGenset || '',
+          statusUPS: row.statusUPS || '',
+          statusCOS: row.statusCOS || '',
+          personilHadir: row.personilHadir,
+          catatan: row.catatan || '',
+          updateTerakhir: row.updateTerakhir || '',
+          dayaBeban: row.dayaBeban || ''
+        };
       }
     });
 
     liveData = newData;
+    rigataData = sourceRigata.filter(item => item && item.location);
+    const lapanganLoads = sourceLoadSeries.filter(item => item && item.location === 'Lapangan Plaza Ceremony');
+    if (lapanganLoads.length) {
+      const nextValue = Number(lapanganLoads[lapanganLoads.length - 1].value) || 0;
+      loadHistory.push({ label: 'Sekarang', value: nextValue });
+      loadHistory = loadHistory.slice(-15);
+    }
+    if (!loadHistory.length && sourceLoadSeries.length) {
+      loadHistory = sourceLoadSeries.slice(-15).map(item => ({ label: item.location, value: Number(item.value) || 0 }));
+    }
+
     lastDataHash = dataHash;
     
     if (matched > 0) {
@@ -291,7 +308,83 @@ function statusClass(v){ const n = normKey(v); if (n === 'normal') return 's-ok'
 function overallStatus(loc){ const live = liveData[loc]; if (!isConnected || !live) return ''; const ref = REFERENCE_DATA[loc]; const vals = [live.statusPenyulang, live.statusGenset, live.statusUPS]; if (ref.cos) vals.push(live.statusCOS); const norm = vals.map(normKey); if (norm.includes('gangguan')) return 's-crit'; if (norm.some(v=>v==='siaga'||v==='')) return 's-warn'; if (norm.length && norm.every(v=>v==='normal')) return 's-ok'; return ''; }
 function escapeHtml(s){ return (s==null?'':s.toString()).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-function renderAll(){ renderMeters(); renderBusbar(); renderCards(); }
+function renderAll(){ renderMeters(); renderBusbar(); renderCards(); renderRigataPanel(); renderLoadPanel(); }
+
+function renderRigataPanel(){
+  const panel = document.getElementById('rigataPanel');
+  const rows = rigataData.filter(item => item && item.location && item.location.toLowerCase().includes('lapangan plaza ceremony'));
+  if (!rows.length) { panel.innerHTML = ''; return; }
+
+  const html = `
+    <h3>Monitoring RIGATA · Lapangan Plaza Ceremony</h3>
+    <div class="rigata-grid">
+      ${rows.map(item => {
+        const tegangan = Array.isArray(item.tegangan) ? item.tegangan : [];
+        const arus = Array.isArray(item.arus) ? item.arus : [];
+        return `
+          <div class="rigata-item">
+            <div class="rigata-head">
+              <span class="rigata-name">${escapeHtml(item.name || 'RIGATA')}</span>
+              <span class="rigata-badge">${escapeHtml(item.location || 'Lapangan Plaza Ceremony')}</span>
+            </div>
+            <div class="rigata-metrics">
+              ${['R','S','T','N'].map((phase, index) => `
+                <div>
+                  <span>Tegangan ${phase}</span>
+                  <strong>${escapeHtml(tegangan[index] || '—')}</strong>
+                </div>
+              `).join('')}
+              ${['R','S','T','N'].map((phase, index) => `
+                <div>
+                  <span>Arus ${phase}</span>
+                  <strong>${escapeHtml(arus[index] || '—')}</strong>
+                </div>
+              `).join('')}
+              <div style="grid-column: 1 / -1;">
+                <span>Temperature</span>
+                <strong>${escapeHtml(item.temperature || '—')}</strong>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  panel.innerHTML = html;
+}
+
+function renderLoadPanel(){
+  const panel = document.getElementById('loadPanel');
+  const points = loadHistory.length ? loadHistory : [
+    { label: 'T-15', value: 12 }, { label: 'T-12', value: 14 }, { label: 'T-9', value: 11 },
+    { label: 'T-6', value: 15 }, { label: 'T-3', value: 13 }, { label: 'Now', value: 15 }
+  ];
+  const values = points.map(p => Number(p.value) || 0);
+  const maxVal = Math.max(20, ...values);
+  const svgPoints = points.map((point, index) => {
+    const x = (index / Math.max(points.length - 1, 1)) * 100;
+    const y = 100 - ((Number(point.value) || 0) / maxVal) * 70 - 15;
+    return `${x},${y}`;
+  }).join(' ');
+
+  const summary = points.length ? points[points.length - 1].value : 0;
+  panel.innerHTML = `
+    <h3>Daya Beban · 15 Menit Terakhir</h3>
+    <svg class="load-chart" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Grafik beban selama 15 menit terakhir">
+      <defs>
+        <linearGradient id="loadLineFill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="rgba(53,196,232,0.35)"/>
+          <stop offset="100%" stop-color="rgba(53,196,232,0)"/>
+        </linearGradient>
+      </defs>
+      <polyline fill="none" stroke="#35c4e8" stroke-width="2.5" points="${svgPoints}" />
+    </svg>
+    <div class="load-legend">
+      <span><i class="swatch"></i>Lapangan Plaza Ceremony: ${summary} MW</span>
+    </div>
+  `;
+}
 
 function renderMeters(){ const totalPersonil = LOCATIONS_ORDER.reduce((a,l)=>a+REFERENCE_DATA[l].personilTotal,0); let hadir = 0, hasAnyHadir = false; LOCATIONS_ORDER.forEach(l=>{ const v = liveData[l] && liveData[l].personilHadir; if (v !== undefined && v !== null && v !== '' && !isNaN(v)){ hadir += parseInt(v,10); hasAnyHadir = true; } }); let ok=0,warn=0,crit=0,off=0; LOCATIONS_ORDER.forEach(l=>{ const s = overallStatus(l); if (s==='s-ok') ok++; else if (s==='s-warn') warn++; else if (s==='s-crit') crit++; else off++; });
   const meters = [ { label:'Lokasi Siaga', value:'5', unit:'titik' }, { label:'Personil (5 lokasi)', value: (isConnected && hasAnyHadir ? hadir+' / '+totalPersonil : totalPersonil), unit:'orang', title:'Dijumlahkan dari rincian 5 lokasi pada Slide 6–10. Ringkasan Eksekutif (Slide 3) mencatat 35 orang — mohon verifikasi ke tim lapangan.' }, { label:'Unit UPS', value:'5', unit:'unit', title:'200 kVA×1, 100 kVA×1, 20 kVA×3 (Slide 3)' }, { label:'Genset PLN', value:'1', unit:'× 200 kVA', title:'Genset cadangan milik PLN di Lapangan Plaza Ceremony (Slide 3 & 9)' } ];
