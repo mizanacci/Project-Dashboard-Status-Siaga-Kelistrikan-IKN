@@ -35,7 +35,9 @@ const AGENDA = [
   { nama:"Penurunan Bendera", lokasi:"Lapangan Plaza Ceremony", mulai:"2026-08-17T16:00:00+08:00", selesai:"2026-08-17T17:30:00+08:00" }
 ];
 
-const DEFAULT_SHEET_URL = "";
+// Terhubung otomatis ke spreadsheet (endpoint gviz — cache jauh lebih fresh
+// daripada link /pub?output=csv). Pastikan sheet di-share "Anyone with the link → Viewer".
+const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1s_h8zBXKELoppqKSaSccK4jWhyZpBER4zL96PU-O7f4/gviz/tq?tqx=out:csv&gid=1897496511";
 
 // =========================================================
 // STATE
@@ -99,10 +101,16 @@ function clearCache() {
 async function init(){
   tickClock(); setInterval(tickClock, 1000);
   renderSequencer(); setInterval(renderSequencer, 30000);
-  
+
+  // Urutan prioritas URL:
+  // 1) URL tersimpan di localStorage (kalau ada)
+  // 2) DEFAULT_SHEET_URL hardcode — DIPAKSA menang supaya seragam di semua perangkat.
+  //    Hapus baris "if (DEFAULT_SHEET_URL) ..." di bawah kalau kamu ingin URL
+  //    yang disimpan lewat tombol ⚙ tetap diprioritaskan.
   const saved = await loadConfig();
   if (saved && saved.url) sheetUrl = saved.url;
-  
+  if (DEFAULT_SHEET_URL) sheetUrl = DEFAULT_SHEET_URL;
+
   // Always render reference data first (don't use old cache)
   renderAll();
 
@@ -150,8 +158,15 @@ async function onSaveConfig(){
     return; 
   }
   
-  if (!url.includes('docs.google.com/spreadsheets') || !url.includes('output=csv')) {
-    status.textContent = 'URL tidak valid. Pastikan format: https://docs.google.com/spreadsheets/d/e/…/pub?output=csv'; 
+  // Terima link CSV Google Sheets dalam beberapa bentuk:
+  //  - Publish to web : ...&output=csv
+  //  - export         : .../export?format=csv&gid=...
+  //  - gviz           : .../gviz/tq?tqx=out:csv&gid=...
+  const isValid = url.includes('docs.google.com/spreadsheets') &&
+    (url.includes('output=csv') || url.includes('format=csv') || url.includes('out:csv'));
+
+  if (!isValid) {
+    status.textContent = 'URL tidak valid. Gunakan link CSV Google Sheets (output=csv, format=csv, atau gviz out:csv).'; 
     status.className='config-status err'; 
     console.warn('Invalid URL format:', url);
     return;
