@@ -43,7 +43,7 @@ const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTuGm
 // STATE
 // =========================================================
 let sheetUrl = DEFAULT_SHEET_URL || null;
-let refreshMs = 10000;
+let refreshMs = 5000;  // Update every 5 seconds untuk responsif lebih cepat
 let refreshTimer = null;
 let liveData = {};
 let isConnected = false;
@@ -342,39 +342,55 @@ function renderRigata(){
   if (!panel) return;
   
   if (!isConnected) {
-    panel.innerHTML = '<p style="color:var(--text-gray);font-size:12px;padding:10px;">Menunggu data RIGATA dari spreadsheet...</p>';
+    panel.innerHTML = '<div class="rigata-layout-container"><div class="rigata-bg" style="background-image:url(/images/Lapangan%20Plaza%20Ceremony.png)"></div><p style="color:var(--text-gray);font-size:12px;padding:20px;text-align:center;position:relative;z-index:10;">Menunggu data RIGATA dari spreadsheet...</p></div>';
     return;
   }
   
-  const html = LOCATIONS_ORDER.map(loc => {
+  // Positioning 5 lokasi di atas layout Lapangan Plaza Ceremony
+  const positions = {
+    "Kantor OIKN": { top: '8%', left: '5%' },
+    "Amphitheater Plaza Ceremony": { top: '8%', right: '5%' },
+    "Taman Kusuma Bangsa": { top: '48%', right: '6%' },
+    "Lapangan Plaza Ceremony": { top: '50%', left: '50%', transform: 'translateX(-50%)' },
+    "MFH Kemenko.3": { bottom: '8%', left: '6%' }
+  };
+  
+  let html = '<div class="rigata-layout-container">';
+  html += '<div class="rigata-bg" style="background-image:url(/images/Lapangan%20Plaza%20Ceremony.png)"></div>';
+  html += '<div class="rigata-overlay">';
+  
+  LOCATIONS_ORDER.forEach(loc => {
     const live = liveData[loc];
-    if (!live) return '';
+    if (!live) return;
     
     const vr = live.teganganR || 0, vs = live.teganganS || 0, vt = live.teganganT || 0;
     const ir = live.arusR || 0, is = live.arusS || 0, it = live.arusT || 0;
     const temp = live.temperature || 0, freq = live.frekuensi || 50, pf = live.powerFactor || 0;
+    const pos = positions[loc] || { top: '50%', left: '50%' };
+    const posStyle = Object.entries(pos).map(([k, v]) => `${k}:${v}`).join(';');
+    const locName = REFERENCE_DATA[loc].tag.split(' · ')[1] || loc.split(' ')[0];
     
-    return `
-    <div class="rigata-item">
+    html += `<div class="rigata-card" style="${posStyle}">
       <div class="rigata-head">
-        <div class="rigata-name">${loc.split(' ')[0]}</div>
+        <div class="rigata-name">${locName}</div>
         <div class="rigata-badge">LIVE</div>
       </div>
       <div class="rigata-metrics">
-        <div><span>V R</span><strong>${vr.toFixed(1)} V</strong></div>
-        <div><span>V S</span><strong>${vs.toFixed(1)} V</strong></div>
-        <div><span>V T</span><strong>${vt.toFixed(1)} V</strong></div>
-        <div><span>I R</span><strong>${ir.toFixed(1)} A</strong></div>
-        <div><span>I S</span><strong>${is.toFixed(1)} A</strong></div>
-        <div><span>I T</span><strong>${it.toFixed(1)} A</strong></div>
-        <div><span>Freq</span><strong>${freq.toFixed(2)} Hz</strong></div>
+        <div><span>VR</span><strong>${vr.toFixed(1)}</strong></div>
+        <div><span>VS</span><strong>${vs.toFixed(1)}</strong></div>
+        <div><span>VT</span><strong>${vt.toFixed(1)}</strong></div>
+        <div><span>IR</span><strong>${ir.toFixed(1)}</strong></div>
+        <div><span>IS</span><strong>${is.toFixed(1)}</strong></div>
+        <div><span>IT</span><strong>${it.toFixed(1)}</strong></div>
+        <div><span>Hz</span><strong>${freq.toFixed(1)}</strong></div>
         <div><span>PF</span><strong>${pf.toFixed(2)}</strong></div>
-        <div><span>Temp</span><strong>${temp.toFixed(1)}°C</strong></div>
+        <div><span>T°C</span><strong>${temp.toFixed(0)}</strong></div>
       </div>
     </div>`;
-  }).join('');
+  });
   
-  panel.innerHTML = html || '<p style="color:var(--text-faint);">No RIGATA data available</p>';
+  html += '</div></div>';
+  panel.innerHTML = html;
 }
 
 // Load Panel: Power Monitoring & Trends
