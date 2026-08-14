@@ -6,7 +6,7 @@
 <title>Dashboard Siaga Kelistrikan KIPP IKN — HUT RI Ke-81</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --pln-red:#DC241F;
@@ -26,10 +26,12 @@
     --white:#FFFFFF;
     --text-dark:#1A202C;
     --text-gray:#6B7280;
+    --text-faint:#A0AEC0;
     --border-light:#D1D5DB;
     --shadow-sm: 0 1px 2px rgba(0,0,0,.05);
     --shadow-md: 0 4px 6px rgba(0,0,0,.07);
     --shadow-lg: 0 10px 25px rgba(0,0,0,.1);
+    --shadow-xl: 0 15px 40px rgba(0,0,0,.12);
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;}
@@ -40,135 +42,180 @@
     line-height:1.6;
     min-height:100vh;
   }
-  .container{max-width:1400px;margin:0 auto;padding:20px;}
+  .container{max-width:1600px;margin:0 auto;padding:24px;}
 
   /* Hero Banner */
   .hero{
-    position:relative;height:280px;border-radius:12px;overflow:hidden;margin-bottom:30px;box-shadow:var(--shadow-lg);
+    position:relative;height:300px;border-radius:16px;overflow:hidden;margin-bottom:32px;box-shadow:var(--shadow-xl);
   }
   .hero::before{
-    content:"";position:absolute;inset:0;background:url('/images/Istana%20IKN.jpg');background-size:cover;background-position:center;opacity:.7;
+    content:"";position:absolute;inset:0;background:url('/images/Istana%20IKN.jpg');background-size:cover;background-position:center;opacity:.65;
   }
   .hero-overlay{
-    position:absolute;inset:0;background:linear-gradient(135deg,rgba(14,124,193,.75) 0%,rgba(220,36,31,.75) 100%);
-    display:flex;align-items:center;padding:40px;gap:30px;z-index:1;
+    position:absolute;inset:0;background:linear-gradient(135deg,rgba(14,124,193,.8) 0%,rgba(220,36,31,.8) 100%);
+    display:flex;align-items:center;padding:48px;gap:32px;z-index:1;
   }
-  .hero-logo{flex-shrink:0;width:120px;height:120px;background:var(--white);border-radius:16px;padding:10px;display:grid;place-items:center;box-shadow:0 8px 16px rgba(0,0,0,.15);}
+  .hero-logo{flex-shrink:0;width:140px;height:140px;background:var(--white);border-radius:20px;padding:12px;display:grid;place-items:center;box-shadow:0 12px 24px rgba(0,0,0,.2);}
   .hero-logo img{width:100%;height:auto;object-fit:contain;}
-  .hero-content h1{font-size:42px;font-weight:700;color:var(--white);text-shadow:0 2px 8px rgba(0,0,0,.3);margin-bottom:8px;letter-spacing:-.5px;}
-  .hero-content p{font-size:18px;color:rgba(255,255,255,.95);text-shadow:0 1px 4px rgba(0,0,0,.3);}
+  .hero-content h1{font-size:48px;font-weight:700;color:var(--white);text-shadow:0 2px 12px rgba(0,0,0,.4);margin-bottom:8px;letter-spacing:-.5px;font-family:'Rajdhani';}
+  .hero-content p{font-size:20px;color:rgba(255,255,255,.95);text-shadow:0 1px 6px rgba(0,0,0,.3);}
 
   /* Header/Navigation */
   .header{
-    background:var(--white);border-bottom:2px solid var(--primary);box-shadow:var(--shadow-md);margin-bottom:30px;
-    display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-radius:0 0 12px 12px;
+    background:var(--white);border-bottom:3px solid var(--primary);box-shadow:var(--shadow-lg);margin-bottom:32px;
+    display:flex;align-items:center;justify-content:space-between;padding:18px 28px;border-radius:0 0 16px 16px;
   }
-  .header-left{display:flex;align-items:center;gap:20px;}
-  .header-logo{width:44px;height:44px;background:linear-gradient(135deg,#DC241F,#FDD835);border-radius:10px;display:grid;place-items:center;color:var(--white);font-weight:700;font-size:22px;}
-  .header-title h2{font-size:20px;color:var(--text-dark);margin:0;font-weight:700;letter-spacing:.5px;}
-  .header-title p{font-size:12px;color:var(--text-gray);margin:2px 0 0;}
-  .header-right{display:flex;align-items:center;gap:12px;}
-  .clock{background:var(--light-bg);padding:8px 16px;border-radius:8px;font-family:'IBM Plex Mono';font-size:14px;color:var(--primary);font-weight:600;}
-  .clock-tz{font-size:10px;color:var(--text-gray);margin-left:4px;}
-  .status-badge{display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--light-bg);border-radius:8px;font-size:12px;font-weight:600;}
-  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--warning);}
+  .header-left{display:flex;align-items:center;gap:24px;}
+  .header-logo{width:50px;height:50px;background:linear-gradient(135deg,#DC241F,#FDD835);border-radius:12px;display:grid;place-items:center;color:var(--white);font-weight:700;font-size:24px;font-family:'Rajdhani';}
+  .header-title h2{font-size:22px;color:var(--text-dark);margin:0;font-weight:700;letter-spacing:.5px;font-family:'Rajdhani';}
+  .header-title p{font-size:13px;color:var(--text-gray);margin:3px 0 0;}
+  .header-right{display:flex;align-items:center;gap:14px;}
+  .clock{background:linear-gradient(135deg, #EBF2F7, #F5F7FA);padding:10px 18px;border-radius:10px;font-family:'IBM Plex Mono';font-size:16px;color:var(--primary);font-weight:700;border:1px solid rgba(14,124,193,.2);}
+  .clock-tz{font-size:11px;color:var(--text-gray);margin-left:6px;font-weight:600;}
+  .status-badge{display:flex;align-items:center;gap:8px;padding:10px 16px;background:rgba(159,217,113,.12);border-radius:10px;font-size:12px;font-weight:600;border:1px solid rgba(39,174,96,.3);}
+  .status-dot{width:10px;height:10px;border-radius:50%;background:var(--warning);animation:pulse 2s ease-in-out infinite;}
   .status-badge.connected .status-dot{background:var(--success);}
   .status-badge.error .status-dot{background:var(--danger);}
-  .header-btn{width:36px;height:36px;border:1px solid var(--border-light);background:var(--light-bg);border-radius:8px;cursor:pointer;font-size:16px;transition:.2s;color:var(--text-gray);}
-  .header-btn:hover{background:var(--lighter-bg);color:var(--primary);}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
 
   /* Metrics Cards */
-  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-bottom:30px;}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px;margin-bottom:32px;}
   .metric-card{
-    background:var(--white);padding:20px;border-radius:12px;border-left:4px solid var(--primary);box-shadow:var(--shadow-sm);
+    background:var(--white);padding:24px;border-radius:14px;border-left:5px solid var(--primary);box-shadow:var(--shadow-md);
     transition:all .3s ease;
+    position:relative;overflow:hidden;
   }
-  .metric-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
-  .metric-label{font-size:12px;color:var(--text-gray);text-transform:uppercase;letter-spacing:.5px;font-weight:600;}
-  .metric-value{font-size:32px;font-weight:700;color:var(--primary);margin:8px 0;font-family:'Rajdhani';}
-  .metric-unit{font-size:14px;color:var(--text-gray);margin-left:4px;}
-  .metric-info{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
-  .metric-dot{width:8px;height:8px;border-radius:50%;background:var(--success);}
+  .metric-card::before{content:"";position:absolute;top:0;right:-40px;width:100px;height:100px;background:radial-gradient(circle, rgba(14,124,193,.08), transparent);border-radius:50%;}
+  .metric-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-3px);}
+  .metric-label{font-size:12px;color:var(--text-gray);text-transform:uppercase;letter-spacing:.8px;font-weight:700;}
+  .metric-value{font-size:40px;font-weight:700;color:var(--primary);margin:10px 0;font-family:'Rajdhani';letter-spacing:-.02em;}
+  .metric-unit{font-size:15px;color:var(--text-gray);margin-left:6px;font-weight:500;}
+  .metric-info{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .metric-dot{width:9px;height:9px;border-radius:50%;background:var(--success);}
   .metric-dot.warning{background:var(--warning);}
   .metric-dot.danger{background:var(--danger);}
-  .metric-dot.neutral{background:var(--text-gray);}
+  .metric-dot.neutral{background:var(--text-faint);}
 
   /* Timeline/Agenda */
-  .agenda-section{background:var(--white);padding:24px;border-radius:12px;margin-bottom:30px;box-shadow:var(--shadow-sm);}
-  .section-title{font-size:16px;font-weight:700;color:var(--text-dark);margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px;}
-  .section-subtitle{font-size:12px;color:var(--text-gray);margin-bottom:16px;}
-  .timeline-container{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;}
+  .agenda-section{background:var(--white);padding:28px;border-radius:14px;margin-bottom:32px;box-shadow:var(--shadow-md);}
+  .section-title{font-size:18px;font-weight:700;color:var(--text-dark);margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px;font-family:'Rajdhani';}
+  .section-subtitle{font-size:13px;color:var(--text-gray);margin-bottom:18px;}
+  .timeline-container{display:flex;gap:14px;overflow-x:auto;padding-bottom:10px;}
   .timeline-item{
-    flex-shrink:0;min-width:180px;padding:12px;background:var(--lighter-bg);border-left:3px solid var(--text-gray);border-radius:8px;
+    flex-shrink:0;min-width:200px;padding:14px 16px;background:var(--lighter-bg);border-left:4px solid var(--text-faint);border-radius:10px;
     transition:all .3s ease;
   }
-  .timeline-item.active{background:rgba(39,174,96,.1);border-left-color:var(--success);}
-  .timeline-item.next{background:rgba(220,36,31,.1);border-left-color:var(--accent-red);}
-  .timeline-tag{font-size:10px;color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+  .timeline-item.active{background:linear-gradient(135deg, rgba(39,174,96,.15), rgba(39,174,96,.08));border-left-color:var(--success);box-shadow:0 4px 12px rgba(39,174,96,.15);}
+  .timeline-item.next{background:linear-gradient(135deg, rgba(220,36,31,.15), rgba(220,36,31,.08));border-left-color:var(--accent-red);box-shadow:0 4px 12px rgba(220,36,31,.15);}
+  .timeline-tag{font-size:11px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
   .timeline-item.active .timeline-tag{color:var(--success);}
   .timeline-item.next .timeline-tag{color:var(--accent-red);}
-  .timeline-name{font-size:13px;font-weight:700;color:var(--text-dark);margin:4px 0;}
-  .timeline-time{font-size:11px;color:var(--text-gray);font-family:'IBM Plex Mono';}
+  .timeline-name{font-size:14px;font-weight:700;color:var(--text-dark);margin:5px 0;font-family:'Rajdhani';}
+  .timeline-time{font-size:12px;color:var(--text-gray);font-family:'IBM Plex Mono';}
+
+  /* Busbar Visualization */
+  .busbar-section{background:var(--white);padding:20px;border-radius:14px;margin-bottom:32px;box-shadow:var(--shadow-md);}
+  .busbar-container{display:flex;align-items:center;gap:0;margin:20px 0;}
+  .busbar-line{flex:1;height:3px;background:linear-gradient(90deg, var(--text-faint) 0%, var(--primary) 50%, var(--text-faint) 100%);position:relative;}
+  .busbar-tick{width:16px;height:16px;border-radius:4px;background:var(--text-faint);border:2px solid var(--white);box-shadow:0 0 0 1px var(--border-light);cursor:default;transition:all .2s;}
+  .busbar-tick.ok{background:var(--success);}
+  .busbar-tick.warning{background:var(--warning);}
+  .busbar-tick.danger{background:var(--danger);}
+  .busbar-labels{display:flex;justify-content:space-between;margin-top:12px;font-size:11px;color:var(--text-faint);}
+
+  /* RIGATA Panel */
+  .rigata-section{background:var(--white);padding:28px;border-radius:14px;margin-bottom:32px;box-shadow:var(--shadow-md);}
+  .rigata-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:18px;}
+  .rigata-item{background:linear-gradient(135deg, #F9FAFB, #FFFFFF);border:1px solid var(--border-light);border-radius:12px;padding:16px;}
+  .rigata-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding-bottom:12px;border-bottom:2px solid var(--primary);}
+  .rigata-name{font-family:'IBM Plex Mono';font-size:12px;letter-spacing:.04em;color:var(--primary);font-weight:700;}
+  .rigata-badge{font-family:'IBM Plex Mono';font-size:10px;letter-spacing:.05em;text-transform:uppercase;border-radius:20px;padding:4px 10px;background:rgba(14,124,193,.15);color:var(--primary);border:1px solid rgba(14,124,193,.3);}
+  .rigata-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;}
+  .rigata-metric{background:rgba(14,124,193,.05);border:1px solid rgba(14,124,193,.15);border-radius:8px;padding:8px;text-align:center;}
+  .rigata-metric-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.03em;}
+  .rigata-metric-value{font-family:'IBM Plex Mono';font-size:13px;color:var(--text-dark);font-weight:700;margin-top:3px;}
+
+  /* Load Panel */
+  .load-section{background:var(--white);padding:28px;border-radius:14px;margin-bottom:32px;box-shadow:var(--shadow-md);}
+  .load-chart-container{background:linear-gradient(135deg, rgba(14,124,193,.05), rgba(61,220,132,.05));border:1px solid var(--border-light);border-radius:12px;padding:16px;margin-top:16px;}
+  .load-chart{width:100%;height:200px;stroke:#0E7CC1;stroke-width:2.5;fill:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.1));}
+  .load-legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;font-size:12px;color:var(--text-gray;}
+  .load-legend i{display:inline-block;width:12px;height:12px;background:var(--primary);border-radius:2px;margin-right:6px;}
 
   /* Locations Grid */
-  .locations-section{background:var(--white);padding:24px;border-radius:12px;box-shadow:var(--shadow-sm);}
-  .locations-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;margin-top:20px;}
+  .locations-section{background:var(--white);padding:28px;border-radius:14px;box-shadow:var(--shadow-md);}
+  .locations-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:22px;margin-top:20px;}
   .location-card{
-    border:2px solid var(--border-light);border-radius:12px;padding:20px;transition:all .3s ease;
-    border-top:5px solid var(--success);background:var(--white);position:relative;
+    border:2px solid var(--border-light);border-radius:14px;padding:22px;transition:all .3s ease;
+    border-top:6px solid var(--success);background:var(--white);position:relative;overflow:hidden;
   }
+  .location-card::before{content:"";position:absolute;top:0;right:-20px;width:80px;height:80px;background:radial-gradient(circle, rgba(39,174,96,.08), transparent);border-radius:50%;}
   .location-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-4px);}
   .location-card.warning{border-top-color:var(--warning);}
   .location-card.danger{border-top-color:var(--danger);}
-  .location-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
-  .location-tag{font-size:10px;color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
-  .location-name{font-size:18px;font-weight:700;color:var(--text-dark);margin:6px 0 4px;}
-  .location-activity{font-size:12px;color:var(--text-gray);line-height:1.5;}
+  .location-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;position:relative;z-index:1;}
+  .location-tag{font-size:11px;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+  .location-name{font-size:20px;font-weight:700;color:var(--text-dark);margin:6px 0 4px;font-family:'Rajdhani';}
+  .location-activity{font-size:13px;color:var(--text-gray);line-height:1.6;}
   .location-badge{
-    padding:4px 12px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;
-    background:var(--light-bg);color:var(--text-gray);
+    padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;
+    background:var(--light-bg);color:var(--text-gray);border:1px solid var(--border-light);
   }
-  .location-badge.ok{background:rgba(39,174,96,.15);color:var(--success);}
-  .location-badge.warning{background:rgba(243,156,18,.15);color:var(--warning);}
-  .location-badge.danger{background:rgba(231,76,60,.15);color:var(--danger);}
+  .location-badge.ok{background:rgba(39,174,96,.15);color:var(--success);border-color:rgba(39,174,96,.3);}
+  .location-badge.warning{background:rgba(243,156,18,.15);color:var(--warning);border-color:rgba(243,156,18,.3);}
+  .location-badge.danger{background:rgba(231,76,60,.15);color:var(--danger);border-color:rgba(231,76,60,.3);}
 
-  .location-image{width:100%;height:150px;object-fit:cover;border-radius:8px;margin:12px 0;cursor:pointer;transition:.3s;}
-  .location-image:hover{transform:scale(1.04);}
+  .location-image{width:100%;height:160px;object-fit:cover;border-radius:10px;margin:14px 0;cursor:pointer;transition:.3s;border:1px solid var(--border-light);}
+  .location-image:hover{transform:scale(1.05);}
 
   .location-specs{
-    display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;
-    padding:12px 0;border-top:1px solid var(--border-light);border-bottom:1px solid var(--border-light);
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;
+    padding:14px 0;border-top:1px solid var(--border-light);border-bottom:1px solid var(--border-light);
   }
-  .spec{
-    display:flex;align-items:center;gap:6px;
-    padding:4px 0;
-  }
-  .spec-dot{width:6px;height:6px;border-radius:50%;background:var(--success);flex-shrink:0;}
+  .spec{display:flex;align-items:flex-start;gap:8px;padding:6px 0;}
+  .spec-dot{width:7px;height:7px;border-radius:50%;background:var(--success);flex-shrink:0;margin-top:4px;}
   .spec-dot.warn{background:var(--warning);}
   .spec-dot.error{background:var(--danger);}
-  .spec-label{font-size:11px;color:var(--text-gray);font-weight:500;}
-  .spec-value{font-size:11px;color:var(--text-dark);font-weight:700;font-family:'IBM Plex Mono';}
+  .spec-label{font-size:12px;color:var(--text-gray);font-weight:500;}
+  .spec-value{font-size:12px;color:var(--text-dark);font-weight:700;font-family:'IBM Plex Mono';}
 
-  .personnel-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:12px;}
-  .personnel-label{color:var(--text-gray);}
-  .personnel-value{font-weight:700;color:var(--text-dark);font-family:'IBM Plex Mono';}
-  .personnel-bar{width:100%;height:6px;background:var(--light-bg);border-radius:3px;margin:6px 0;overflow:hidden;}
-  .personnel-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--success));border-radius:3px;}
+  .personnel-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:13px;}
+  .personnel-label{color:var(--text-gray);font-weight:600;}
+  .personnel-value{font-weight:700;color:var(--primary);font-family:'IBM Plex Mono';font-size:14px;}
+  .personnel-bar{width:100%;height:8px;background:var(--light-bg);border-radius:4px;margin:8px 0;overflow:hidden;border:1px solid var(--border-light);}
+  .personnel-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--success));border-radius:4px;}
+
+  .roles-section{margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light);}
+  .roles-toggle{background:none;border:none;color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;padding:0;text-transform:uppercase;letter-spacing:.5px;}
+  .roles-list{display:none;margin-top:10px;flex-direction:column;gap:8px;}
+  .roles-list.show{display:flex;}
+  .role-item{display:flex;justify-content:space-between;font-size:12px;padding:8px 0;border-bottom:1px solid var(--lighter-bg);}
+  .role-name{color:var(--text-dark);font-weight:600;}
+  .role-count{color:var(--text-faint);font-family:'IBM Plex Mono';}
 
   /* Footer */
   .footer{
-    background:var(--light-bg);padding:20px;border-radius:12px;text-align:center;
-    font-size:12px;color:var(--text-gray);margin-top:30px;
+    background:linear-gradient(135deg, var(--light-bg), var(--lighter-bg));padding:24px;border-radius:14px;text-align:center;
+    font-size:12px;color:var(--text-gray);margin-top:32px;border:1px solid var(--border-light);
   }
+
+  /* Lightbox */
+  #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:1000;align-items:center;justify-content:center;padding:24px;}
+  #lightbox.open{display:flex;}
+  .lightbox-inner{position:relative;max-width:90vw;max-height:90vh;}
+  .lightbox-inner img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 25px 50px rgba(0,0,0,.3);}
+  #lightboxClose{position:absolute;top:16px;right:16px;width:44px;height:44px;background:rgba(255,255,255,.95);border:none;border-radius:50%;cursor:pointer;font-size:28px;font-weight:bold;color:#1A202C;display:grid;place-items:center;transition:.2s;box-shadow:0 4px 12px rgba(0,0,0,.2);}
+  #lightboxClose:hover{background:#FFF;transform:scale(1.1);}
 
   /* Media Queries */
   @media (max-width:768px){
-    .hero-overlay{flex-direction:column;padding:24px;gap:20px;align-items:flex-start;}
-    .hero-logo{width:80px;height:80px;}
-    .hero-content h1{font-size:28px;}
-    .hero-content p{font-size:14px;}
+    .hero-overlay{flex-direction:column;padding:32px;gap:24px;align-items:flex-start;}
+    .hero-logo{width:100px;height:100px;}
+    .hero-content h1{font-size:32px;}
+    .hero-content p{font-size:16px;}
+    .container{padding:16px;}
     .metrics{grid-template-columns:1fr;}
-    .timeline-container{margin:0 -12px;padding:0 12px;}
+    .timeline-container{margin:0 -14px;padding:0 14px;}
     .locations-grid{grid-template-columns:1fr;}
   }
 </style>
@@ -177,17 +224,15 @@
 
 <div class="container">
   
-  <!-- Hero Banner dengan Logo PLN & Gambar IKN -->
+  <!-- Hero Banner -->
   <div class="hero">
     <div class="hero-overlay">
       <div class="hero-logo">
         <img src="/images/Logo_PLN.png" alt="Logo PLN">
       </div>
       <div class="hero-content">
-        <div>
-          <h1>Siaga Kelistrikan KIPP IKN</h1>
-          <p>📍 HUT RI Ke-81 • UID KALTIMRA • UP3 Nusantara</p>
-        </div>
+        <h1>Siaga Kelistrikan KIPP IKN</h1>
+        <p>🏛️ HUT RI Ke-81 • 📍 UID KALTIMRA • UP3 Nusantara</p>
       </div>
     </div>
   </div>
@@ -197,229 +242,296 @@
     <div class="header-left">
       <div class="header-logo">⚡</div>
       <div class="header-title">
-        <h2>Dashboard Siaga</h2>
-        <p>Status Real-Time Kelistrikan Kegiatan HUT RI 2026</p>
+        <h2>Dashboard Monitoring</h2>
+        <p>Status Real-Time Kelistrikan Kegiatan HUT RI 2026 · 14–17 Agustus</p>
       </div>
     </div>
     <div class="header-right">
       <div class="clock"><span id="clockTime">00:00:00</span><span class="clock-tz">WITA</span></div>
-      <div class="status-badge" id="connBadge"><span class="status-dot"></span><span id="connLabel">MEMUAT</span></div>
-      <button class="header-btn" id="refreshBtn" title="Segarkan">↻</button>
+      <div class="status-badge connected" id="connBadge"><span class="status-dot"></span><span id="connLabel">TERHUBUNG</span></div>
+      <button class="header-btn" id="refreshBtn" title="Segarkan data">↻</button>
     </div>
   </div>
 
-  <!-- Metrics -->
+  <!-- Metrics Cards -->
   <div class="metrics" id="metricsContainer">
     <div class="metric-card">
-      <div class="metric-label">Lokasi Siaga</div>
+      <div class="metric-label">📍 Lokasi Siaga</div>
       <div><span class="metric-value">5</span><span class="metric-unit">titik</span></div>
       <div class="metric-info">
-        <span class="metric-dot"></span><span style="font-size:11px;color:var(--text-gray);">5 lokasi</span>
+        <span class="metric-dot"></span><span style="font-size:12px;color:var(--text-gray);">Tersebar di IKN</span>
       </div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Personil (5 Lokasi)</div>
+      <div class="metric-label">👥 Personil (5 Lokasi)</div>
       <div><span class="metric-value" id="personilValue">59</span><span class="metric-unit">orang</span></div>
       <div class="metric-info">
-        <span class="metric-dot" id="personilStatus"></span><span style="font-size:11px;color:var(--text-gray);" id="personilInfo">Target: 59 orang</span>
+        <span class="metric-dot" id="personilStatus"></span><span style="font-size:12px;color:var(--text-gray);" id="personilInfo">Siaga kelistrikan</span>
       </div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Unit UPS</div>
+      <div class="metric-label">🔋 Unit UPS</div>
       <div><span class="metric-value">5</span><span class="metric-unit">unit</span></div>
       <div class="metric-info">
-        <span class="metric-dot"></span><span style="font-size:11px;color:var(--text-gray);">Terpasang siap</span>
+        <span class="metric-dot"></span><span style="font-size:12px;color:var(--text-gray);">200+100+60 kVA</span>
       </div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Genset PLN</div>
+      <div class="metric-label">⚙️ Genset PLN</div>
       <div><span class="metric-value">1</span><span class="metric-unit">× 200 kVA</span></div>
       <div class="metric-info">
-        <span class="metric-dot"></span><span style="font-size:11px;color:var(--text-gray);">Cadangan</span>
+        <span class="metric-dot"></span><span style="font-size:12px;color:var(--text-gray);">Cadangan terpasang</span>
       </div>
     </div>
   </div>
 
   <!-- Timeline/Agenda -->
   <div class="agenda-section">
-    <div class="section-title">📅 Jadwal Kegiatan</div>
-    <div class="section-subtitle">14 – 17 Agustus 2026</div>
+    <div class="section-title">📅 Jadwal Kegiatan HUT RI</div>
+    <div class="section-subtitle">14 – 17 Agustus 2026 (WITA)</div>
     <div class="timeline-container" id="timelineContainer"></div>
   </div>
 
-  <!-- Locations -->
+  <!-- Busbar Status -->
+  <div class="busbar-section">
+    <div class="section-title">🔌 Status Cepat 5 Lokasi</div>
+    <div class="busbar-container" id="busbarContainer">
+      <div style="flex:1;display:flex;justify-content:space-between;align-items:center;padding:0 4px;">
+        <span style="font-size:11px;color:var(--text-faint);">Penyulang Status</span>
+      </div>
+    </div>
+    <div class="busbar-labels" id="busbarLabels"></div>
+  </div>
+
+  <!-- RIGATA Panel -->
+  <div class="rigata-section">
+    <div class="section-title">🔋 Monitoring RIGATA · Lapangan Plaza Ceremony</div>
+    <div class="section-subtitle">Tegangan & Arus Real-Time (Phase R, S, T, N)</div>
+    <div class="rigata-grid" id="rigataContainer">
+      <div style="color:var(--text-gray);padding:20px;text-align:center;">Menunggu data dari spreadsheet...</div>
+    </div>
+  </div>
+
+  <!-- Load Panel -->
+  <div class="load-section">
+    <div class="section-title">📊 Daya Beban Lapangan Plaza Ceremony</div>
+    <div class="section-subtitle">15 Menit Terakhir · Trend Analysis</div>
+    <div class="load-chart-container">
+      <svg class="load-chart" viewBox="0 0 100 100" preserveAspectRatio="none" id="loadChartSvg">
+        <polyline fill="none" stroke="#0E7CC1" stroke-width="1.5" points="0,80 10,75 20,70 30,65 40,60 50,55 60,50 70,45 80,40 90,35 100,30" />
+        <polyline fill="url(#loadGradient)" stroke="none" points="0,100 10,75 20,70 30,65 40,60 50,55 60,50 70,45 80,40 90,35 100,30 100,100" opacity="0.15" />
+        <defs>
+          <linearGradient id="loadGradient" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#0E7CC1"/>
+            <stop offset="100%" stop-color="#27AE60" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <div class="load-legend">
+      <span><i></i>Lapangan Plaza Ceremony: <strong id="loadValue">15</strong> MW</span>
+      <span style="margin-left:20px;"><i style="background:var(--text-faint);"></i>Status: <strong id="loadStatus">NORMAL</strong></span>
+    </div>
+  </div>
+
+  <!-- Locations Grid -->
   <div class="locations-section">
-    <div class="section-title">📍 Status Lokasi Kegiatan</div>
-    <div class="section-subtitle">5 Titik Siaga Kelistrikan</div>
+    <div class="section-title">📍 Detail Status 5 Lokasi Kegiatan</div>
+    <div class="section-subtitle">Siaga Kelistrikan Lengkap · Spesifikasi Teknis & Personil</div>
     <div class="locations-grid" id="locationsContainer"></div>
   </div>
 
   <!-- Footer -->
   <div class="footer">
-    📌 Sumber data: Rapat koordinasi bersama Otorita IKN, 29 Juli 2026 | Dokumen internal UID KALTIMRA / UP3 Nusantara
+    <strong>Sumber Data:</strong> Rapat koordinasi bersama Otorita IKN, 29 Juli 2026<br>
+    <small>Dokumen internal UID KALTIMRA / UP3 Nusantara · Diperbarui setiap 10 detik dari Google Sheets</small>
   </div>
 
 </div>
 
 <!-- Lightbox -->
-<div id="lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;">
-  <div style="position:relative;max-width:90vw;max-height:90vh;">
-    <img id="lightboxImg" src="" alt="" style="max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.3);">
-    <button id="lightboxClose" style="position:absolute;top:10px;right:10px;width:40px;height:40px;background:white;border:none;border-radius:50%;cursor:pointer;font-size:24px;font-weight:bold;color:#333;">✕</button>
+<div id="lightbox">
+  <div class="lightbox-inner">
+    <img id="lightboxImg" src="" alt="">
+    <button id="lightboxClose">✕</button>
   </div>
 </div>
 
 <script>
-// ==================== DATA ====================
+// ============================================================
+// DATA & CONFIG
+// ============================================================
+const IMG_OIKN = "/images/Kantor%20OIKN.png";
+const IMG_AMPHITHEATER = "/images/Merdeka%20Run%20&%20Nusantara%20Vaganza.png";
+const IMG_TKB = "/images/Taman%20Kusuma%20Bangsa.png";
+const IMG_LAPANGAN = "/images/Lapangan%20Plaza%20Ceremony.png";
+const IMG_MFH = "/images/MFH%20Kemenko.3.png";
+
 const LOCATIONS = [
   {
     id: 1,
     name: "Kantor OIKN",
-    tag: "LOKASI 01",
+    tag: "LOKASI 01 · GD OIKN",
     activity: "Pengukuhan Paskibraka",
     schedule: "Jumat, 14 Agt · 19.00–20.00",
-    image: "/images/Kantor%20OIKN.png",
+    image: IMG_OIKN,
     personnel: 15,
-    personilStats: "12 / 15",
-    status: "normal",
-    specs: [
-      { label: "Penyulang Utama", value: "NST.03" },
-      { label: "Genset", value: "500 kW" },
-      { label: "UPS", value: "20 kVA" },
-    ]
+    personilHadir: 12,
+    status: "ok",
+    penyulangUtama: "NST.03",
+    genset: "500 kW",
+    ups: "20 kVA",
+    roles: [["Standby GHS",3],["Standby UPS",3],["Standby GD OIKN",3],["Standby GH.01",3],["Standby GD Sumbu Timur",3]]
   },
   {
     id: 2,
     name: "Amphitheater Plaza Ceremony",
-    tag: "LOKASI 02",
+    tag: "LOKASI 02 · GD PLAZA",
     activity: "Merdeka Run & Nusantara Vaganza",
     schedule: "Sabtu, 15 Agt · 19.00–selesai",
-    image: "/images/Merdeka%20Run%20&%20Nusantara%20Vaganza.png",
+    image: IMG_AMPHITHEATER,
     personnel: 12,
-    personilStats: "11 / 12",
-    status: "normal",
-    specs: [
-      { label: "Penyulang Utama", value: "NST.06" },
-      { label: "Genset", value: "500 kVA" },
-      { label: "UPS", value: "20 kVA" },
-    ]
+    personilHadir: 11,
+    status: "ok",
+    penyulangUtama: "NST.06",
+    genset: "500 kVA",
+    ups: "20 kVA",
+    roles: [["Standby UPS",3],["Standby GD Plaza",3],["Standby GH.01",3],["GHS",3]]
   },
   {
     id: 3,
     name: "Taman Kusuma Bangsa",
-    tag: "LOKASI 03",
+    tag: "LOKASI 03 · GD TKB",
     activity: "Renungan Suci",
     schedule: "Minggu, 16 Agt · 21.00–22.00",
-    image: "/images/Taman%20Kusuma%20Bangsa.png",
+    image: IMG_TKB,
     personnel: 15,
-    personilStats: "14 / 15",
-    status: "normal",
-    specs: [
-      { label: "Penyulang Utama", value: "NST.03" },
-      { label: "Genset", value: "250 kVA" },
-      { label: "UPS", value: "20 kVA" },
-    ]
+    personilHadir: 14,
+    status: "ok",
+    penyulangUtama: "NST.03",
+    genset: "250 kVA",
+    ups: "20 kVA",
+    roles: [["Standby UPS",3],["Standby GD TKB",3],["Standby GH.01",3],["GHS",3],["Standby GD Sumbu Timur",3]]
   },
   {
     id: 4,
     name: "Lapangan Plaza Ceremony",
-    tag: "LOKASI 04",
+    tag: "LOKASI 04 · GARDU KEMENKO.1",
     activity: "Pengibaran & Penurunan Bendera",
     schedule: "Senin, 17 Agt · 06.30–09.30 & 16.00–17.30",
-    image: "/images/Lapangan%20Plaza%20Ceremony.png",
+    image: IMG_LAPANGAN,
     personnel: 15,
-    personilStats: "13 / 15",
-    status: "normal",
-    specs: [
-      { label: "Penyulang Utama", value: "NST.06" },
-      { label: "Genset", value: "200 kVA × 2" },
-      { label: "UPS", value: "200 kVA" },
-    ]
+    personilHadir: 13,
+    status: "ok",
+    penyulangUtama: "NST.06",
+    genset: "200 kVA + 200 kVA",
+    ups: "200 kVA",
+    roles: [["Standby COS",3],["Standby UPS",3],["Standby Gardu Kemenko.1",3],["Standby GH.01",3],["GHS",3]]
   },
   {
     id: 5,
     name: "MFH Kemenko.3",
-    tag: "LOKASI 05",
+    tag: "LOKASI 05 · GARDU KEMENKO.3",
     activity: "Detik-Detik Proklamasi (Online)",
     schedule: "Senin, 17 Agt · 11.00–selesai",
-    image: "/images/MFH%20Kemenko.3.png",
+    image: IMG_MFH,
     personnel: 12,
-    personilStats: "9 / 12",
-    status: "normal",
-    specs: [
-      { label: "Penyulang Utama", value: "NST.06" },
-      { label: "Genset", value: "350 kVA" },
-      { label: "UPS", value: "100 kVA" },
-    ]
+    personilHadir: 9,
+    status: "ok",
+    penyulangUtama: "NST.06",
+    genset: "350 kVA",
+    ups: "100 kVA",
+    roles: [["Standby UPS",3],["Standby Gardu Kemenko.3",3],["Standby GH.01",3],["GHS",3]]
   }
 ];
 
 const AGENDA = [
   { name: "Pengukuhan Paskibraka", location: "Kantor OIKN", start: "2026-08-14T19:00:00+08:00", end: "2026-08-14T20:00:00+08:00" },
-  { name: "Merdeka Run", location: "Amphitheater Plaza", start: "2026-08-15T19:00:00+08:00", end: "2026-08-15T23:00:00+08:00" },
+  { name: "Merdeka Run & Nusantara Vaganza", location: "Amphitheater Plaza", start: "2026-08-15T19:00:00+08:00", end: "2026-08-15T23:00:00+08:00" },
   { name: "Renungan Suci", location: "Taman Kusuma", start: "2026-08-16T21:00:00+08:00", end: "2026-08-16T22:00:00+08:00" },
   { name: "Pengibaran Bendera", location: "Lapangan Plaza", start: "2026-08-17T06:30:00+08:00", end: "2026-08-17T09:30:00+08:00" },
   { name: "Detik-Detik Proklamasi", location: "MFH Kemenko.3", start: "2026-08-17T11:00:00+08:00", end: "2026-08-17T12:30:00+08:00" },
   { name: "Penurunan Bendera", location: "Lapangan Plaza", start: "2026-08-17T16:00:00+08:00", end: "2026-08-17T17:30:00+08:00" }
 ];
 
-// ==================== INIT ====================
-function init() {
+let loadHistory = [{label:'T-3',value:12},{label:'T-2',value:13},{label:'T-1',value:14},{label:'Now',value:15}];
+let rigataData = [];
+
+// ============================================================
+// INIT
+// ============================================================
+function init(){
   tickClock();
   setInterval(tickClock, 1000);
   renderTimeline();
-  setInterval(renderTimeline, 60000);
+  setInterval(renderTimeline, 30000);
+  renderBusbar();
   renderLocations();
-  updateStatusFromServer();
-  setInterval(updateStatusFromServer, 30000); // Poll every 30 seconds
-  
-  document.getElementById('lightboxClose').onclick = () => {
-    document.getElementById('lightbox').style.display = 'none';
-  };
+  updateFromServer();
+  setInterval(updateFromServer, 10000);
+
+  document.getElementById('lightboxClose').onclick = () => { document.getElementById('lightbox').classList.remove('open'); };
+  document.getElementById('lightbox').onclick = (e) => { if(e.target.id === 'lightbox') document.getElementById('lightbox').classList.remove('open'); };
   document.getElementById('refreshBtn').onclick = () => {
-    updateStatusFromServer();
     document.getElementById('refreshBtn').style.transform = 'rotate(360deg)';
+    updateFromServer();
     setTimeout(() => document.getElementById('refreshBtn').style.transform = 'rotate(0deg)', 800);
   };
 }
 
-// ==================== UPDATE FROM SERVER ====================
-function updateStatusFromServer() {
-  fetch('/api/status')
-    .then(r => r.json())
-    .then(data => {
-      // Update each location from API
-      if(data.locations) {
-        data.locations.forEach(loc => {
-          const idx = LOCATIONS.findIndex(l => l.name === loc.Lokasi);
-          if(idx !== -1) {
-            LOCATIONS[idx].status = loc.Status_Penyulang?.toLowerCase() || 'normal';
-            LOCATIONS[idx].personilStats = (loc.Personil_Hadir || 0) + ' / ' + LOCATIONS[idx].personnel;
-          }
-        });
-      }
-      renderLocations();
-      document.getElementById('connBadge').classList.add('connected');
-      document.getElementById('connLabel').textContent = 'TERHUBUNG';
-    })
-    .catch(() => {
-      document.getElementById('connBadge').classList.remove('connected');
-      document.getElementById('connBadge').classList.add('error');
-      document.getElementById('connLabel').textContent = 'OFFLINE';
-    });
+// ============================================================
+// UPDATE FROM SERVER
+// ============================================================
+async function updateFromServer(){
+  try {
+    const res = await fetch('/api/status');
+    if(!res.ok) throw new Error('API error');
+    const data = await res.json();
+    
+    if(data.locations){
+      data.locations.forEach(loc => {
+        const matched = LOCATIONS.find(l => l.name.toLowerCase().includes(loc.Lokasi.toLowerCase()));
+        if(matched){
+          matched.status = (loc.Status_Penyulang || 'ok').toLowerCase();
+          if(loc.Personil_Hadir !== undefined) matched.personilHadir = parseInt(loc.Personil_Hadir) || matched.personilHadir;
+        }
+      });
+    }
+    
+    if(data.rigata) rigataData = data.rigata;
+    if(data.loadSeries) {
+      loadHistory = data.loadSeries.slice(-10).map(item => ({
+        label: item.location || 'Load',
+        value: Number(item.value) || 0
+      }));
+    }
+    
+    renderLocations();
+    renderBusbar();
+    renderRigata();
+    renderLoadChart();
+    updateMetrics();
+    document.getElementById('connLabel').textContent = 'TERHUBUNG';
+    document.getElementById('connBadge').classList.add('connected');
+  } catch(err){
+    console.log('API offline, using demo data:', err.message);
+    document.getElementById('connLabel').textContent = 'DEMO DATA';
+    document.getElementById('connBadge').classList.remove('connected');
+  }
 }
 
-// ==================== CLOCK ====================
-function tickClock() {
+// ============================================================
+// RENDERING FUNCTIONS
+// ============================================================
+function tickClock(){
   const now = new Date();
   const wita = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Makassar', hour12: false });
   document.getElementById('clockTime').textContent = wita;
 }
 
-// ==================== TIMELINE ====================
-function renderTimeline() {
+function renderTimeline(){
   const now = new Date();
-  const html = AGENDA.map((ev, i) => {
+  const html = AGENDA.map((ev) => {
     const start = new Date(ev.start);
     const end = new Date(ev.end);
     const isActive = now >= start && now <= end;
@@ -437,51 +549,141 @@ function renderTimeline() {
   document.getElementById('timelineContainer').innerHTML = html;
 }
 
-// ==================== LOCATIONS ====================
-function renderLocations() {
+function renderBusbar(){
+  const statusMap = { ok: 'ok', siaga: 'warning', gangguan: 'danger' };
+  const ticks = LOCATIONS.map(loc => {
+    const status = statusMap[loc.status] || 'ok';
+    return `<div class="busbar-tick ${status}" title="${loc.name}"></div>`;
+  }).join('');
+  
+  const labels = LOCATIONS.map(loc => `<span>${loc.tag.split('·')[1]?.trim() || loc.name}</span>`).join('');
+  
+  document.getElementById('busbarContainer').innerHTML = `<div style="flex:1;display:flex;justify-content:space-between;align-items:center;gap:8px;">${ticks}</div>`;
+  document.getElementById('busbarLabels').innerHTML = labels;
+}
+
+function renderRigata(){
+  const container = document.getElementById('rigataContainer');
+  if(!rigataData || rigataData.length === 0){
+    container.innerHTML = '<div style="color:var(--text-faint);padding:20px;text-align:center;grid-column:1/-1;">Data RIGATA belum tersedia dari spreadsheet</div>';
+    return;
+  }
+  
+  const html = rigataData.map(item => `
+    <div class="rigata-item">
+      <div class="rigata-head">
+        <div class="rigata-name">${item.name || 'RIGATA'}</div>
+        <div class="rigata-badge">${item.location || 'Lapangan'}</div>
+      </div>
+      <div class="rigata-metrics">
+        <div class="rigata-metric"><div class="rigata-metric-label">Tegangan R</div><div class="rigata-metric-value">${item.teganganR || '—'}</div></div>
+        <div class="rigata-metric"><div class="rigata-metric-label">Tegangan S</div><div class="rigata-metric-value">${item.teganganS || '—'}</div></div>
+        <div class="rigata-metric"><div class="rigata-metric-label">Tegangan T</div><div class="rigata-metric-value">${item.teganganT || '—'}</div></div>
+        <div class="rigata-metric"><div class="rigata-metric-label">Tegangan N</div><div class="rigata-metric-value">${item.teganganN || '—'}</div></div>
+        <div class="rigata-metric"><div class="rigata-metric-label">Arus R</div><div class="rigata-metric-value">${item.arusR || '—'}</div></div>
+        <div class="rigata-metric"><div class="rigata-metric-label">Arus S</div><div class="rigata-metric-value">${item.arusS || '—'}</div></div>
+        <div class="rigata-metric"><div class="rigata-metric-label">Arus T</div><div class="rigata-metric-value">${item.arusT || '—'}</div></div>
+        <div class="rigata-metric"><div class="rigata-metric-label">Temperature</div><div class="rigata-metric-value">${item.temperature || '—'}</div></div>
+      </div>
+    </div>
+  `).join('');
+  container.innerHTML = html;
+}
+
+function renderLoadChart(){
+  const values = loadHistory.map(p => Number(p.value) || 0);
+  const maxVal = Math.max(20, ...values);
+  const points = loadHistory.map((p, i) => {
+    const x = (i / Math.max(loadHistory.length - 1, 1)) * 100;
+    const y = 100 - ((Number(p.value) || 0) / maxVal) * 70 - 15;
+    return `${x},${y}`;
+  }).join(' ');
+  
+  document.getElementById('loadChartSvg').innerHTML = `
+    <polyline fill="none" stroke="#0E7CC1" stroke-width="2" points="${points}" />
+    <polyline fill="url(#loadGradient)" stroke="none" points="${points} 100,100 0,100" opacity="0.15" />
+  `;
+  
+  const lastValue = loadHistory.length ? loadHistory[loadHistory.length - 1].value : 0;
+  document.getElementById('loadValue').textContent = lastValue;
+  document.getElementById('loadStatus').textContent = lastValue > 15 ? 'TINGGI' : lastValue > 10 ? 'NORMAL' : 'RENDAH';
+}
+
+function renderLocations(){
   const html = LOCATIONS.map(loc => {
-    const pctVal = parseInt(loc.personilStats.split('/')[0]) / loc.personnel * 100;
-    const pctClass = pctVal >= 90 ? '' : pctVal >= 70 ? 'warning' : 'danger';
+    const pct = (loc.personilHadir / loc.personnel) * 100;
+    const statusClass = loc.status === 'ok' ? 'ok' : loc.status === 'siaga' ? 'warning' : 'danger';
     
     return `
-    <div class="location-card ${loc.status === 'warning' ? 'warning' : loc.status === 'danger' ? 'danger' : ''}">
+    <div class="location-card ${statusClass}">
       <div class="location-header">
         <div>
           <div class="location-tag">${loc.tag}</div>
           <div class="location-name">${loc.name}</div>
           <div class="location-activity"><strong>${loc.activity}</strong></div>
-          <div class="location-activity" style="font-size:11px;color:var(--text-gray);margin-top:4px;">${loc.schedule}</div>
+          <div class="location-activity" style="font-size:12px;color:var(--text-faint);margin-top:4px;">${loc.schedule}</div>
         </div>
-        <div class="location-badge ${loc.status}">${loc.status.toUpperCase()}</div>
+        <div class="location-badge ${statusClass}">${loc.status.toUpperCase()}</div>
       </div>
       
-      <img src="${loc.image}" alt="${loc.name}" class="location-image" onclick="showLightbox('${loc.image}','${loc.name}')">
+      <img src="${loc.image}" alt="${loc.name}" class="location-image" onclick="openLightbox('${loc.image}','${loc.name}')">
       
       <div class="location-specs">
-        ${loc.specs.map(s => `<div class="spec"><span class="spec-dot"></span><div style="flex:1;"><div class="spec-label">${s.label}</div><div class="spec-value">${s.value}</div></div></div>`).join('')}
+        <div class="spec"><span class="spec-dot"></span><div><div class="spec-label">Penyulang Utama</div><div class="spec-value">${loc.penyulangUtama}</div></div></div>
+        <div class="spec"><span class="spec-dot"></span><div><div class="spec-label">Genset</div><div class="spec-value">${loc.genset}</div></div></div>
+        <div class="spec"><span class="spec-dot"></span><div><div class="spec-label">UPS</div><div class="spec-value">${loc.ups}</div></div></div>
+        <div class="spec"><span class="spec-dot"></span><div><div class="spec-label">Kapasitas</div><div class="spec-value">Siap</div></div></div>
       </div>
       
-      <div style="margin-top:12px;">
+      <div style="margin-top:14px;">
         <div class="personnel-row">
           <span class="personnel-label">Personil Hadir</span>
-          <span class="personnel-value">${loc.personilStats}</span>
+          <span class="personnel-value">${loc.personilHadir} / ${loc.personnel}</span>
         </div>
         <div class="personnel-bar">
-          <div class="personnel-fill" style="width:${pctVal}%"></div>
+          <div class="personnel-fill" style="width:${pct}%"></div>
+        </div>
+      </div>
+      
+      <div class="roles-section">
+        <button class="roles-toggle" onclick="toggleRoles(this)">+ Rincian Personil (${loc.roles.length} role)</button>
+        <div class="roles-list">
+          ${loc.roles.map(r => `<div class="role-item"><span class="role-name">${r[0]}</span><span class="role-count">${r[1]} orang</span></div>`).join('')}
         </div>
       </div>
     </div>
     `;
   }).join('');
-  
   document.getElementById('locationsContainer').innerHTML = html;
 }
 
-function showLightbox(src, name) {
-  document.getElementById('lightboxImg').src = src;
-  document.getElementById('lightbox').style.display = 'flex';
+function updateMetrics(){
+  let totalPersonil = LOCATIONS.reduce((a, l) => a + l.personilHadir, 0);
+  let okStatus = LOCATIONS.filter(l => l.status === 'ok').length;
+  
+  document.getElementById('personilValue').textContent = totalPersonil;
+  document.getElementById('personilInfo').textContent = `${totalPersonil}/${LOCATIONS.reduce((a,l)=>a+l.personnel,0)} hadir`;
+  
+  const dot = document.getElementById('personilStatus');
+  if(totalPersonil >= 50) dot.classList = 'metric-dot';
+  else if(totalPersonil >= 40) dot.classList = 'metric-dot warning';
+  else dot.classList = 'metric-dot danger';
 }
 
+function openLightbox(src, name){
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('open');
+}
+
+function toggleRoles(btn){
+  const list = btn.nextElementSibling;
+  list.classList.toggle('show');
+  btn.textContent = list.classList.contains('show') ? '- Sembunyikan Rincian' : '+ Rincian Personil (' + list.children.length + ' role)';
+}
+
+// ============================================================
+// START
+// ============================================================
 init();
 </script>
 
