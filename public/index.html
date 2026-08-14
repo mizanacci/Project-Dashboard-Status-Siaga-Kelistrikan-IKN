@@ -53,43 +53,6 @@
       <p style="color:var(--text-faint);padding:20px;text-align:center;">Loading Load data...</p>
     </div>
   </section>
-    <h2>Hubungkan Spreadsheet</h2>
-    <p class="lede">Tempel tautan CSV dari Google Sheets di bawah agar status tiap lokasi diperbarui otomatis tanpa mengubah kode dashboard. Gunakan endpoint <code>gviz</code> atau <code>export</code> (bukan "Publish to web") agar data tidak basi karena cache.</p>
-    <div class="steps">
-      <div>
-        <strong>Step 1:</strong> Pada Google Sheet, baris pertama HARUS berisi kolom (case-insensitive):
-        <code>Lokasi, Status_Penyulang, Status_Genset, Status_UPS, Status_COS, Personil_Hadir, Catatan, Update_Terakhir</code>
-        <br><strong>Nama lokasi yang valid (persis):</strong>
-        <div style="font-family:monospace; background:#f0f0f0; padding:5px; margin:5px 0; font-size:11px;">
-          • Kantor OIKN<br>
-          • Amphitheater Plaza Ceremony<br>
-          • Taman Kusuma Bangsa<br>
-          • Lapangan Plaza Ceremony<br>
-          • MFH Kemenko.3
-        </div>
-      </div>
-      <div>
-        <strong>Step 2:</strong> Di Google Sheets: <code>Bagikan (Share) → General access</code>, ubah dari "Restricted" menjadi
-        <code>Anyone with the link</code> dengan peran <code>Viewer</code>. Langkah ini wajib agar dashboard bisa membaca data — TIDAK perlu "Publish to web".
-      </div>
-      <div>
-        <strong>Step 3:</strong> Salin ID spreadsheet dari URL edit
-        (<code>.../spreadsheets/d/<b>ID_ASLI</b>/edit#gid=...</code>) dan <code>gid</code> tab yang dituju,
-        lalu susun tautan CSV berikut dan tempel di bawah:
-        <div style="font-family:monospace; background:#f0f0f0; padding:5px; margin:5px 0; font-size:11px; word-break:break-all;">
-          <b>gviz (disarankan):</b><br>
-          https://docs.google.com/spreadsheets/d/<b>ID_ASLI</b>/gviz/tq?tqx=out:csv&amp;gid=<b>GID</b><br><br>
-          <b>export (alternatif):</b><br>
-          https://docs.google.com/spreadsheets/d/<b>ID_ASLI</b>/export?format=csv&amp;gid=<b>GID</b>
-        </div>
-      </div>
-    </div>
-    <div class="config-form">
-      <input type="text" id="sheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/ID_ASLI/gviz/tq?tqx=out:csv&gid=GID">
-      <button class="btn-primary" id="saveConfigBtn">Simpan &amp; Hubungkan</button>
-    </div>
-    <div class="config-status" id="configStatus"></div>
-  </section>
 
   <footer class="foot">
     <span>Sumber data: rapat koordinasi bersama Otorita IKN, 29 Juli 2026 — dokumen internal UID KALTIMRA / UP3 Nusantara.</span>

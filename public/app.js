@@ -35,9 +35,10 @@ const AGENDA = [
   { nama:"Penurunan Bendera", lokasi:"Lapangan Plaza Ceremony", mulai:"2026-08-17T16:00:00+08:00", selesai:"2026-08-17T17:30:00+08:00" }
 ];
 
-// Terhubung otomatis ke spreadsheet (endpoint gviz — cache jauh lebih fresh
-// daripada link /pub?output=csv). Pastikan sheet di-share "Anyone with the link → Viewer".
-const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTuGm3GCP1mSd4_n4GkzUUlWRATJYCk2Gt0KOQma_fgaZwCGZ3a7LGFjdiLfukga5TJZjiSK9YxFaap/pub?gid=1897496511&single=true&output=csv";
+// Terhubung otomatis ke spreadsheet menggunakan gviz endpoint (cache fresh)
+// Format: https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/gviz/tq?tqx=out:csv&gid=TAB_ID
+// Pastikan sheet di-share "Anyone with the link → Viewer" (tidak perlu "Publish to web")
+const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTuGm3GCP1mSd4_n4GkzUUlWRATJYCk2Gt0KOQma_fgaZwCGZ3a7LGFjdiLfukga5TJZjiSK9YxFaap/gviz/tq?tqx=out:csv&gid=1897496511";
 
 // =========================================================
 // STATE
@@ -257,24 +258,16 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     lastSync = new Date(); 
     setConn(isConnected ? 'live' : 'nomatch');
     
-    const status = document.getElementById('configStatus'); 
     const sourceLabel = fromCache ? 'cache' : 'fresh';
     
     if (isConnected) {
-      status.textContent = '✓ ' + matched + '/5 lokasi (' + sourceLabel + ')';
-      status.className = 'config-status ok';
-      console.log('[SUCCESS] Synced', matched, 'locations from', sourceLabel, '- RENDERING UI');
+      console.log('[SUCCESS] Synced', matched, '/5 locations from', sourceLabel, '— RENDERING UI');
     } else {
-      status.textContent = '✗ 0 lokasi cocok - check column names';
-      status.className = 'config-status err';
-      console.error('[ERROR] No locations matched!');
+      console.error('[ERROR] No locations matched! Check column names in spreadsheet');
     }
   }catch(err){ 
     isConnected = false; 
     setConn('error'); 
-    const status = document.getElementById('configStatus'); 
-    status.textContent = '✗ Error: ' + err.message; 
-    status.className = 'config-status err';
     console.error('[ERROR] Sync failed:', err.message);
   }
   finally{ 
@@ -404,13 +397,32 @@ function renderLoad(){
   }
   
   let totalBeban = 0, totalDaya = 0;
+  const locData = [];
+  
   LOCATIONS_ORDER.forEach(loc => {
     const live = liveData[loc];
     if (live) {
+      const daya = live.daya || 0;
       totalBeban += live.dayaBeban || 0;
-      totalDaya += live.daya || 0;
+      totalDaya += daya;
+      locData.push({ loc: loc.split(' ')[0], daya: daya });
     }
   });
+  
+  // Simple bar chart dengan SVG
+  const maxDaya = Math.max(...locData.map(d => d.daya), 1);
+  const chartWidth = 280, chartHeight = 120, barWidth = chartWidth / locData.length;
+  
+  let svgBars = locData.map((d, i) => {
+    const barHeight = (d.daya / maxDaya) * chartHeight;
+    const x = i * barWidth;
+    const y = chartHeight - barHeight;
+    return `
+      <rect x="${x}" y="${y}" width="${barWidth - 4}" height="${barHeight}" fill="rgba(14,124,193,.7)" rx="3"/>
+      <text x="${x + (barWidth-4)/2}" y="${chartHeight + 15}" text-anchor="middle" font-size="10" fill="var(--text-gray)">${d.loc}</text>
+      <text x="${x + (barWidth-4)/2}" y="${y - 3}" text-anchor="middle" font-size="9" fill="var(--primary)" font-weight="700">${d.daya.toFixed(0)}</text>
+    `;
+  }).join('');
   
   const html = `
     <div class="load-stats">
@@ -423,10 +435,20 @@ function renderLoad(){
         <span class="stat-value">${(totalDaya/1000).toFixed(1)} <span class="unit">kW</span></span>
       </div>
     </div>
-    <div class="load-chart-placeholder">
-      <div style="text-align:center;padding:20px;color:var(--text-faint);">
-        📊 Grafik Load Trend (Real-time updates setiap 10 detik)
-      </div>
+    <div class="load-chart">
+      <div class="chart-title">Daya Konsumsi Per Lokasi (Watt)</div>
+      <svg width="100%" height="180" viewBox="0 0 ${chartWidth} ${chartHeight + 25}" style="max-width:100%;">
+        <defs>
+          <linearGradient id="barGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#0E7CC1;stop-opacity:0.8" />
+            <stop offset="100%" style="stop-color:#0A5A8F;stop-opacity:0.6" />
+          </linearGradient>
+        </defs>
+        ${svgBars}
+      </svg>
+    </div>
+    <div class="load-info">
+      <small>📊 Update: ${lastSync ? lastSync.toLocaleTimeString('id-ID', {timeZone:'Asia/Makassar'}) + ' WITA' : '—'}</small>
     </div>
   `;
   
