@@ -38,7 +38,11 @@ const AGENDA = [
 // Terhubung otomatis ke spreadsheet menggunakan gviz endpoint (cache fresh)
 // Format: https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/gviz/tq?tqx=out:csv&gid=TAB_ID
 // Pastikan sheet di-share "Anyone with the link → Viewer" (tidak perlu "Publish to web")
-const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTuGm3GCP1mSd4_n4GkzUUlWRATJYCk2Gt0KOQma_fgaZwCGZ3a7LGFjdiLfukga5TJZjiSK9YxFaap/gviz/tq?tqx=out:csv&gid=1897496511";
+const SPREADSHEET_ID = "1s_h8zBXKELoppqKSaSccK4jWhyZpBER4zL96PU-O7f4";
+const STATUS_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=1897496511`;
+const RIGATA_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=2087410650`;
+const LOAD_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=1021438315`;
+const DEFAULT_SHEET_URL = STATUS_SHEET_URL;
 
 // =========================================================
 // STATE
@@ -170,100 +174,162 @@ async function onSaveConfig(){
   armRefresh(); 
 }
 
+function readCell(row, ...keys) {
+  for (const key of keys) {
+    const value = row && row[key];
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return '';
+}
+
+function toNumber(value, fallback = 0) {
+  const parsed = Number.parseFloat(String(value ?? '').replace(/[^0-9.,-]/g, '').replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function buildLocationMap(rows, sheetName) {
+  const map = {};
+  const matched = new Set();
+
+  rows.forEach((row) => {
+    const lokasi = readCell(row, 'lokasi', 'location', 'namalokasi', 'nama lokasi');
+    const key = normKey(lokasi);
+    if (!key) return;
+    map[key] = row;
+    matched.add(key);
+  });
+
+  console.log(`[${sheetName}] ${matched.size} lokasi cocok`);
+  if (matched.size === 0) {
+    console.warn(`[${sheetName}] Tidak ada lokasi cocok. Periksa header "Lokasi" dan nama lokasi di sheet.`);
+  }
+
+  return map;
+}
+
+function applyStatusFields(target, row) {
+  target.statusPenyulang = readCell(row, 'statuspenyulang', 'status penyulang', 'status_penyulang') || '';
+  target.statusGenset = readCell(row, 'statusgenset', 'status genset', 'status_genset') || '';
+  target.statusUPS = readCell(row, 'statusups', 'status ups', 'status_ups') || '';
+  target.statusCOS = readCell(row, 'statuscos', 'status cos', 'status_cos') || '';
+  target.personilHadir = readCell(row, 'personilhadir', 'personil hadir', 'personil_hadir') || '';
+  target.catatan = readCell(row, 'catatan') || '';
+  target.updateTerakhir = readCell(row, 'updateterakhir', 'update terakhir', 'update_terakhir') || '';
+}
+
+function applyRigataFields(target, row) {
+  target.teganganR = toNumber(readCell(row, 'teganganr', 'tegangan r', 'tegangan_r'));
+  target.teganganS = toNumber(readCell(row, 'tegangans', 'tegangan s', 'tegangan_s'));
+  target.teganganT = toNumber(readCell(row, 'tegangant', 'tegangan t', 'tegangan_t'));
+  target.teganganN = toNumber(readCell(row, 'tegangann', 'tegangan n', 'tegangan_n'));
+  target.arusR = toNumber(readCell(row, 'arusr', 'arus r', 'arus_r'));
+  target.arusS = toNumber(readCell(row, 'aruss', 'arus s', 'arus_s'));
+  target.arusT = toNumber(readCell(row, 'arust', 'arus t', 'arus_t'));
+  target.arusN = toNumber(readCell(row, 'arusn', 'arus n', 'arus_n'));
+  target.temperature = toNumber(readCell(row, 'temperature', 'temperatur'));
+  target.frekuensi = toNumber(readCell(row, 'frekuensi', 'frekuensihz', 'frekuensi hz', 'frekuensi_hz'));
+  target.powerFactor = toNumber(readCell(row, 'powerfactor', 'power factor', 'power_factor'));
+}
+
+function applyLoadFields(target, row) {
+  target.dayaBeban = toNumber(readCell(row, 'dayabeban', 'daya beban', 'daya_beban'));
+  target.daya = toNumber(readCell(row, 'daya', 'dayaw', 'daya w', 'daya_w'));
+}
+
 async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo'); renderAll(); return; }
   try{
     const forceBypassCache = unchangedPolls >= MAX_UNCHANGED_POLLS || manual;
     const cacheBypass = (forceBypassCache || manual) ? '&t=' + Date.now() : '';
-    const proxy = '/api/fetch?u=' + encodeURIComponent(sheetUrl) + cacheBypass;
+    const sheetRequests = [
+      { name: 'STATUS', url: STATUS_SHEET_URL },
+      { name: 'RIGATA', url: RIGATA_SHEET_URL },
+      { name: 'LOAD', url: LOAD_SHEET_URL }
+    ];
+
     const syncType = manual ? 'MANUAL' : (forceBypassCache ? 'FORCE' : 'AUTO');
-    console.log('[SYNC]', syncType, 'refresh, polls:', unchangedPolls);
-    
-    const res = await fetch(proxy, { cache:'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    
-    const dataHash = res.headers.get('X-Data-Hash');
-    const fromCache = res.headers.get('X-From-Cache') === '1';
-    
-    console.log('[FETCH] Hash:', dataHash?.substring(0,6), 'vs Last:', lastDataHash?.substring(0,6), 'Cache:', fromCache);
-    
-    // Skip UI update ONLY if: hash match AND auto poll AND not forced  
-    if (dataHash && lastDataHash && dataHash === lastDataHash && !manual && !forceBypassCache) {
+    console.log('[SYNC]', syncType, 'refresh, polls:', unchangedPolls, 'sheets:', sheetRequests.map(s => s.name).join(', '));
+
+    const responses = await Promise.all(sheetRequests.map(async ({ name, url }) => {
+      const proxy = '/api/fetch?u=' + encodeURIComponent(url) + cacheBypass;
+      console.log(`[${name}] Fetching ${proxy}`);
+      const res = await fetch(proxy, { cache:'no-store' });
+      if (!res.ok) throw new Error(`${name} HTTP ${res.status}`);
+
+      const dataHash = res.headers.get('X-Data-Hash');
+      const fromCache = res.headers.get('X-From-Cache') === '1';
+      const text = await res.text();
+
+      if (!text || text.trim().length === 0) throw new Error(`${name} CSV kosong`);
+      const rows = parseCSV(text);
+      console.log(`[${name}] hash=${dataHash ? dataHash.substring(0,8) : 'n/a'} cache=${fromCache ? 'yes' : 'no'} bytes=${text.length} rows=${rows.length}`);
+
+      return { name, dataHash, fromCache, rows };
+    }));
+
+    const combinedHash = responses.map(r => r.dataHash || '').join('|');
+    console.log('[SYNC] Combined hash:', combinedHash ? combinedHash.substring(0, 40) : 'EMPTY');
+
+    if (combinedHash && lastDataHash && combinedHash === lastDataHash && !manual && !forceBypassCache) {
       unchangedPolls++;
       setConn(isConnected ? 'live' : 'nomatch');
       console.log('[SKIP] Hash unchanged, polls:', unchangedPolls);
       return;
     }
-    
+
     console.log('[UPDATE] Hash changed or manual refresh');
     unchangedPolls = 0;
-    const text = await res.text();
-    console.log('[CSV] Received', text.length, 'bytes');
-    
-    if (!text || text.trim().length === 0) throw new Error('CSV kosong');
-    
-    const rows = parseCSV(text);
-    console.log('[CSV] Parsed', rows.length, 'rows');
-    
-    if (rows.length === 0) throw new Error('Tidak ada data');
-    
-    if (rows.length > 0) console.log('[CSV] Headers:', Object.keys(rows[0]).join(', '));
-    
-    const map = {};
-    rows.forEach(r=>{ const lok = normKey(r['lokasi']||''); if (lok) map[lok] = r; });
-    console.log('[MATCH] Found in CSV:', Object.keys(map).length > 0 ? Object.keys(map).join(', ') : 'NONE');
+
+    const statusRows = responses.find(r => r.name === 'STATUS')?.rows || [];
+    const rigataRows = responses.find(r => r.name === 'RIGATA')?.rows || [];
+    const loadRows = responses.find(r => r.name === 'LOAD')?.rows || [];
+
+    const statusMap = buildLocationMap(statusRows, 'STATUS');
+    const rigataMap = buildLocationMap(rigataRows, 'RIGATA');
+    const loadMap = buildLocationMap(loadRows, 'LOAD');
 
     let matched = 0;
     const newData = {};
-    LOCATIONS_ORDER.forEach(loc=>{ 
-      const normLoc = normKey(loc); 
-      const row = map[normLoc]; 
-      if (row){ 
-        matched++; 
-        newData[loc] = { 
-          statusPenyulang: row['statuspenyulang'] || '', 
-          statusGenset: row['statusgenset'] || '', 
-          statusUPS: row['statusups'] || '', 
-          statusCOS: row['statuscos'] || '', 
-          personilHadir: row['personilhadir'], 
-          catatan: row['catatan'] || '', 
-          updateTerakhir: row['updateterakhir'] || '',
-          // RIGATA: 3-phase electrical monitoring
-          teganganR: parseFloat(row['tegangan r']||'0') || 0,
-          teganganS: parseFloat(row['tegangan s']||'0') || 0,
-          teganganT: parseFloat(row['tegangan t']||'0') || 0,
-          teganganN: parseFloat(row['tegangan n']||'0') || 0,
-          arusR: parseFloat(row['arus r']||'0') || 0,
-          arusS: parseFloat(row['arus s']||'0') || 0,
-          arusT: parseFloat(row['arus t']||'0') || 0,
-          arusN: parseFloat(row['arus n']||'0') || 0,
-          temperature: parseFloat(row['temperature']||'0') || 0,
-          frekuensi: parseFloat(row['frekuensi (hz)']||row['frekuensi']||'0') || 0,
-          powerFactor: parseFloat(row['power factor']||'0') || 0,
-          // Load: power monitoring
-          dayaBeban: parseFloat(row['daya beban']||'0') || 0,
-          daya: parseFloat(row['daya (w)']||row['daya']||'0') || 0
-        }; 
+    LOCATIONS_ORDER.forEach((loc) => {
+      const key = normKey(loc);
+      const row = {};
+      const statusRow = statusMap[key];
+      const rigataRow = rigataMap[key];
+      const loadRow = loadMap[key];
+
+      if (statusRow) {
+        applyStatusFields(row, statusRow);
+      }
+      if (rigataRow) {
+        applyRigataFields(row, rigataRow);
+      }
+      if (loadRow) {
+        applyLoadFields(row, loadRow);
+      }
+
+      if (Object.keys(row).length > 0) {
+        matched++;
+        newData[loc] = row;
       }
     });
 
     liveData = newData;
-    lastDataHash = dataHash;
-    
+    lastDataHash = combinedHash;
+
     if (matched > 0) {
-      saveCacheData(newData, dataHash);
-      console.log('[CACHE] Saved', matched, 'locations');
+      saveCacheData(newData, combinedHash);
+      console.log('[CACHE] Saved', matched, 'locations from combined sheets');
     }
-    
-    isConnected = matched > 0; 
-    lastSync = new Date(); 
+
+    isConnected = matched > 0;
+    lastSync = new Date();
     setConn(isConnected ? 'live' : 'nomatch');
-    
-    const sourceLabel = fromCache ? 'cache' : 'fresh';
-    
+
+    const sourceLabel = responses.some(r => r.fromCache) ? 'cache' : 'fresh';
+
     if (isConnected) {
       console.log('[SUCCESS] Synced', matched, '/5 locations from', sourceLabel, '— RENDERING UI');
     } else {
-      console.error('[ERROR] No locations matched! Check column names in spreadsheet');
+      console.error('[ERROR] No locations matched! Check Lokasi column across STATUS/RIGATA/LOAD sheets');
     }
   }catch(err){ 
     isConnected = false; 
