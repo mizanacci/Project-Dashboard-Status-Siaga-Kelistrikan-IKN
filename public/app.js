@@ -51,6 +51,8 @@ let sheetUrl = DEFAULT_SHEET_URL || null;
 let refreshMs = 5000;  // Update every 5 seconds untuk responsif lebih cepat
 let refreshTimer = null;
 let liveData = {};
+let rigataPanels = [];
+let loadTrend = [];
 let isConnected = false;
 let lastSync = null;
 const expandedRoles = new Set();
@@ -236,6 +238,78 @@ function applyLoadFields(target, row) {
   target.daya = toNumber(readCell(row, 'daya', 'dayaw', 'daya w', 'daya_w'));
 }
 
+function parseRigataPanels(text) {
+  const lines = (text || '').replace(/\r/g, '').split('\n').filter(line => line.trim().length);
+  if (lines.length < 2) return [];
+
+  const panels = [];
+  const dataLines = lines.slice(1);
+
+  dataLines.forEach((line) => {
+    const cols = splitCSVLine(line);
+    if (cols.length < 12) return;
+
+    const panelName = (cols[1] || '').trim();
+    const lokasi = (cols[0] || '').trim() || 'Lapangan Plaza Ceremony';
+    if (!panelName) return;
+
+    const cleanName = panelName
+      .replace(/^RIGATA\s*\d+\s*/i, '')
+      .replace(/\s*\([^)]*\)\s*$/, '')
+      .trim();
+
+    panels.push({
+      lokasi,
+      panelName: panelName,
+      label: cleanName || panelName,
+      teganganR: toNumber(cols[2]),
+      teganganS: toNumber(cols[3]),
+      teganganT: toNumber(cols[4]),
+      teganganN: toNumber(cols[5]),
+      arusR: toNumber(cols[6]),
+      arusS: toNumber(cols[7]),
+      arusT: toNumber(cols[8]),
+      arusN: toNumber(cols[9]),
+      temperature: toNumber(cols[10]),
+      frekuensi: toNumber(cols[11]),
+      powerFactor: toNumber(cols[12])
+    });
+  });
+
+  console.log('[RIGATA] Parsed', panels.length, 'panel data');
+  return panels;
+}
+
+function parseLoadTrend(text) {
+  const lines = (text || '').replace(/\r/g, '').split('\n').filter(line => line.trim().length);
+  if (lines.length < 2) return [];
+
+  const trend = [];
+  const dataLines = lines.slice(1);
+
+  dataLines.forEach((line) => {
+    const cols = splitCSVLine(line);
+    if (cols.length < 4) return;
+
+    const no = (cols[0] || '').trim();
+    const tanggal = (cols[1] || '').trim();
+    const waktu = (cols[2] || '').trim();
+    const dayaW = toNumber(cols[3]);
+
+    if (!no && !tanggal && !waktu && !dayaW) return;
+
+    trend.push({
+      no,
+      tanggal,
+      waktu,
+      dayaW
+    });
+  });
+
+  console.log('[LOAD] Parsed', trend.length, 'titik data');
+  return trend;
+}
+
 async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo'); renderAll(); return; }
   try{
     const forceBypassCache = unchangedPolls >= MAX_UNCHANGED_POLLS || manual;
@@ -263,7 +337,7 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
       const rows = parseCSV(text);
       console.log(`[${name}] hash=${dataHash ? dataHash.substring(0,8) : 'n/a'} cache=${fromCache ? 'yes' : 'no'} bytes=${text.length} rows=${rows.length}`);
 
-      return { name, dataHash, fromCache, rows };
+      return { name, dataHash, fromCache, rows, text };
     }));
 
     const combinedHash = responses.map(r => r.dataHash || '').join('|');
@@ -280,44 +354,33 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     unchangedPolls = 0;
 
     const statusRows = responses.find(r => r.name === 'STATUS')?.rows || [];
-    const rigataRows = responses.find(r => r.name === 'RIGATA')?.rows || [];
-    const loadRows = responses.find(r => r.name === 'LOAD')?.rows || [];
-
     const statusMap = buildLocationMap(statusRows, 'STATUS');
-    const rigataMap = buildLocationMap(rigataRows, 'RIGATA');
-    const loadMap = buildLocationMap(loadRows, 'LOAD');
+
+    const rigataText = responses.find(r => r.name === 'RIGATA')?.text || '';
+    rigataPanels = parseRigataPanels(rigataText);
+
+    const loadText = responses.find(r => r.name === 'LOAD')?.text || '';
+    loadTrend = parseLoadTrend(loadText);
 
     let matched = 0;
     const newData = {};
     LOCATIONS_ORDER.forEach((loc) => {
       const key = normKey(loc);
-      const row = {};
       const statusRow = statusMap[key];
-      const rigataRow = rigataMap[key];
-      const loadRow = loadMap[key];
+      if (!statusRow) return;
 
-      if (statusRow) {
-        applyStatusFields(row, statusRow);
-      }
-      if (rigataRow) {
-        applyRigataFields(row, rigataRow);
-      }
-      if (loadRow) {
-        applyLoadFields(row, loadRow);
-      }
-
-      if (Object.keys(row).length > 0) {
-        matched++;
-        newData[loc] = row;
-      }
+      const row = {};
+      applyStatusFields(row, statusRow);
+      matched++;
+      newData[loc] = row;
     });
 
     liveData = newData;
     lastDataHash = combinedHash;
 
     if (matched > 0) {
-      saveCacheData(newData, combinedHash);
-      console.log('[CACHE] Saved', matched, 'locations from combined sheets');
+      saveCacheData({ ...newData, rigataPanels, loadTrend }, combinedHash);
+      console.log('[CACHE] Saved', matched, 'locations and', rigataPanels.length, 'rigata panels and', loadTrend.length, 'load points');
     }
 
     isConnected = matched > 0;
@@ -329,7 +392,7 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     if (isConnected) {
       console.log('[SUCCESS] Synced', matched, '/5 locations from', sourceLabel, '— RENDERING UI');
     } else {
-      console.error('[ERROR] No locations matched! Check Lokasi column across STATUS/RIGATA/LOAD sheets');
+      console.error('[ERROR] No locations matched! Check Lokasi column in Status Siaga sheet');
     }
   }catch(err){ 
     isConnected = false; 
@@ -399,39 +462,34 @@ function renderCard(loc){ const ref = REFERENCE_DATA[loc]; const live = liveData
 function renderRigata(){
   const panel = document.getElementById('rigataPanelContent');
   if (!panel) return;
-  
-  if (!isConnected) {
+
+  if (!rigataPanels.length) {
     panel.innerHTML = '<div class="rigata-layout-container"><div class="rigata-bg" style="background-image:url(/images/Lapangan%20Plaza%20Ceremony.png)"></div><p style="color:var(--text-gray);font-size:12px;padding:20px;text-align:center;position:relative;z-index:10;">Menunggu data RIGATA dari spreadsheet...</p></div>';
     return;
   }
-  
-  // Positioning 5 lokasi di atas layout Lapangan Plaza Ceremony
-  const positions = {
-    "Kantor OIKN": { top: '8%', left: '5%' },
-    "Amphitheater Plaza Ceremony": { top: '8%', right: '5%' },
-    "Taman Kusuma Bangsa": { top: '48%', right: '6%' },
-    "Lapangan Plaza Ceremony": { top: '50%', left: '50%', transform: 'translateX(-50%)' },
-    "MFH Kemenko.3": { bottom: '8%', left: '6%' }
-  };
-  
+
+  const positions = [
+    { top: '8%', left: '6%' },
+    { top: '8%', right: '6%' },
+    { top: '42%', left: '18%' },
+    { top: '42%', right: '18%' },
+    { bottom: '8%', left: '50%', transform: 'translateX(-50%)' }
+  ];
+
   let html = '<div class="rigata-layout-container">';
   html += '<div class="rigata-bg" style="background-image:url(/images/Lapangan%20Plaza%20Ceremony.png)"></div>';
   html += '<div class="rigata-overlay">';
-  
-  LOCATIONS_ORDER.forEach(loc => {
-    const live = liveData[loc];
-    if (!live) return;
-    
-    const vr = live.teganganR || 0, vs = live.teganganS || 0, vt = live.teganganT || 0;
-    const ir = live.arusR || 0, is = live.arusS || 0, it = live.arusT || 0;
-    const temp = live.temperature || 0, freq = live.frekuensi || 50, pf = live.powerFactor || 0;
-    const pos = positions[loc] || { top: '50%', left: '50%' };
+
+  rigataPanels.forEach((item, index) => {
+    const vr = item.teganganR || 0, vs = item.teganganS || 0, vt = item.teganganT || 0;
+    const ir = item.arusR || 0, is = item.arusS || 0, it = item.arusT || 0;
+    const temp = item.temperature || 0, freq = item.frekuensi || 50, pf = item.powerFactor || 0;
+    const pos = positions[index] || { top: '50%', left: '50%' };
     const posStyle = Object.entries(pos).map(([k, v]) => `${k}:${v}`).join(';');
-    const locName = REFERENCE_DATA[loc].tag.split(' · ')[1] || loc.split(' ')[0];
-    
+
     html += `<div class="rigata-card" style="${posStyle}">
       <div class="rigata-head">
-        <div class="rigata-name">${locName}</div>
+        <div class="rigata-name">${escapeHtml(item.label)}</div>
         <div class="rigata-badge">LIVE</div>
       </div>
       <div class="rigata-metrics">
@@ -447,7 +505,7 @@ function renderRigata(){
       </div>
     </div>`;
   });
-  
+
   html += '</div></div>';
   panel.innerHTML = html;
 }
@@ -456,68 +514,56 @@ function renderRigata(){
 function renderLoad(){
   const panel = document.getElementById('loadPanelContent');
   if (!panel) return;
-  
-  if (!isConnected) {
+
+  if (!loadTrend.length) {
     panel.innerHTML = '<p style="color:var(--text-gray);font-size:12px;padding:10px;">Menunggu data Load dari spreadsheet...</p>';
     return;
   }
-  
-  let totalBeban = 0, totalDaya = 0;
-  const locData = [];
-  
-  LOCATIONS_ORDER.forEach(loc => {
-    const live = liveData[loc];
-    if (live) {
-      const daya = live.daya || 0;
-      totalBeban += live.dayaBeban || 0;
-      totalDaya += daya;
-      locData.push({ loc: loc.split(' ')[0], daya: daya });
-    }
-  });
-  
-  // Simple bar chart dengan SVG
-  const maxDaya = Math.max(...locData.map(d => d.daya), 1);
-  const chartWidth = 280, chartHeight = 120, barWidth = chartWidth / locData.length;
-  
-  let svgBars = locData.map((d, i) => {
-    const barHeight = (d.daya / maxDaya) * chartHeight;
-    const x = i * barWidth;
-    const y = chartHeight - barHeight;
-    return `
-      <rect x="${x}" y="${y}" width="${barWidth - 4}" height="${barHeight}" fill="rgba(14,124,193,.7)" rx="3"/>
-      <text x="${x + (barWidth-4)/2}" y="${chartHeight + 15}" text-anchor="middle" font-size="10" fill="var(--text-gray)">${d.loc}</text>
-      <text x="${x + (barWidth-4)/2}" y="${y - 3}" text-anchor="middle" font-size="9" fill="var(--primary)" font-weight="700">${d.daya.toFixed(0)}</text>
-    `;
+
+  const chartWidth = 360, chartHeight = 140;
+  const values = loadTrend.map(p => p.dayaW);
+  const minVal = Math.min(...values, 0);
+  const maxVal = Math.max(...values, 1);
+  const span = Math.max(maxVal - minVal, 1);
+  const latest = loadTrend[loadTrend.length - 1];
+
+  const points = loadTrend.map((point, index) => {
+    const x = (index / Math.max(loadTrend.length - 1, 1)) * chartWidth;
+    const y = chartHeight - ((point.dayaW - minVal) / span) * chartHeight;
+    return `${x},${y}`;
+  }).join(' ');
+
+  const xLabels = [0, Math.floor(loadTrend.length / 2), loadTrend.length - 1].filter((v, i, arr) => arr.indexOf(v) === i);
+  const labelHtml = xLabels.map((idx) => {
+    const item = loadTrend[idx];
+    const x = (idx / Math.max(loadTrend.length - 1, 1)) * chartWidth;
+    return `<text x="${x}" y="${chartHeight + 16}" text-anchor="middle" font-size="9" fill="var(--text-gray)">${escapeHtml(item.waktu || item.tanggal || idx + 1)}</text>`;
   }).join('');
-  
+
   const html = `
     <div class="load-stats">
       <div class="stat-card">
-        <span class="stat-label">Total Beban</span>
-        <span class="stat-value">${totalBeban.toFixed(0)} <span class="unit">kW</span></span>
+        <span class="stat-label">Daya Terakhir</span>
+        <span class="stat-value">${(latest ? latest.dayaW : 0).toFixed(0)} <span class="unit">W</span></span>
       </div>
       <div class="stat-card">
-        <span class="stat-label">Total Daya</span>
-        <span class="stat-value">${(totalDaya/1000).toFixed(1)} <span class="unit">kW</span></span>
+        <span class="stat-label">Update</span>
+        <span class="stat-value">${latest ? escapeHtml(latest.tanggal + ' ' + latest.waktu) : '—'}</span>
       </div>
     </div>
     <div class="load-chart">
-      <div class="chart-title">Daya Konsumsi Per Lokasi (Watt)</div>
-      <svg width="100%" height="180" viewBox="0 0 ${chartWidth} ${chartHeight + 25}" style="max-width:100%;">
-        <defs>
-          <linearGradient id="barGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" style="stop-color:#0E7CC1;stop-opacity:0.8" />
-            <stop offset="100%" style="stop-color:#0A5A8F;stop-opacity:0.6" />
-          </linearGradient>
-        </defs>
-        ${svgBars}
+      <div class="chart-title">Trend Daya Beban (Watt)</div>
+      <svg width="100%" height="200" viewBox="0 0 ${chartWidth} ${chartHeight + 30}" style="max-width:100%;">
+        <polyline points="${points}" fill="none" stroke="#0E7CC1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        <line x1="0" y1="${chartHeight}" x2="${chartWidth}" y2="${chartHeight}" stroke="rgba(255,255,255,0.18)" />
+        ${labelHtml}
       </svg>
     </div>
     <div class="load-info">
-      <small>📊 Update: ${lastSync ? lastSync.toLocaleTimeString('id-ID', {timeZone:'Asia/Makassar'}) + ' WITA' : '—'}</small>
+      <small>📊 Titik data: ${loadTrend.length} · ${lastSync ? lastSync.toLocaleTimeString('id-ID', {timeZone:'Asia/Makassar'}) + ' WITA' : '—'}</small>
     </div>
   `;
-  
+
   panel.innerHTML = html;
 }
 
