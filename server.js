@@ -9,7 +9,15 @@ const PUBLIC = path.join(__dirname, 'public');
 const CACHE_TTL = 2000; // 2 seconds - very short to catch spreadsheet changes quickly
 
 const mime = {
-  '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.json': 'application/json', '.txt': 'text/plain'
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8'
 };
 
 // Simple in-memory cache with TTL + hit counter
@@ -109,14 +117,14 @@ const server = http.createServer(async (req, res) => {
     const parsed = url.parse(req.url, true);
     if (parsed.pathname === '/api/fetch'){
       const u = parsed.query.u;
-      if (!u){ res.writeHead(400, {'Content-Type':'text/plain'}); res.end('missing url param `u`'); return; }
+      if (!u){ res.writeHead(400, {'Content-Type':'text/plain; charset=utf-8'}); res.end('missing url param `u`'); return; }
       const format = String(parsed.query.format || '').toLowerCase();
       try{
         let text = getCachedData(u);
         let fromCache = false;
         if (!text) {
           const r = await fetch(u);
-          if (!r.ok){ res.writeHead(502, {'Content-Type':'text/plain'}); res.end('upstream error: ' + r.status); return; }
+          if (!r.ok){ res.writeHead(502, {'Content-Type':'text/plain; charset=utf-8'}); res.end('upstream error: ' + r.status); return; }
           text = await r.text();
           setCacheData(u, text);
         } else {
@@ -132,23 +140,23 @@ const server = http.createServer(async (req, res) => {
         }
         res.end(text);
         return;
-      }catch(e){ res.writeHead(502, {'Content-Type':'text/plain'}); res.end(e.message); return; }
+      }catch(e){ res.writeHead(502, {'Content-Type':'text/plain; charset=utf-8'}); res.end(e.message); return; }
     }
 
     // serve static files from public
     let filePath = parsed.pathname === '/' ? '/index.html' : decodeURIComponent(parsed.pathname);
     // prevent path traversal
-    if (filePath.includes('..')){ res.writeHead(400); res.end('Bad request'); return; }
+    if (filePath.includes('..')){ res.writeHead(400, {'Content-Type':'text/plain; charset=utf-8'}); res.end('Bad request'); return; }
     const full = path.join(PUBLIC, filePath);
     if (!fs.existsSync(full) || fs.statSync(full).isDirectory()){
-      res.writeHead(404, {'Content-Type':'text/plain'}); res.end('Not found'); return;
+      res.writeHead(404, {'Content-Type':'text/plain; charset=utf-8'}); res.end('Not found'); return;
     }
     const ext = path.extname(full).toLowerCase();
     const ct = mime[ext] || 'application/octet-stream';
     res.writeHead(200, {'Content-Type': ct});
     fs.createReadStream(full).pipe(res);
 
-  }catch(err){ res.writeHead(500, {'Content-Type':'text/plain'}); res.end(err.message); }
+  }catch(err){ res.writeHead(500, {'Content-Type':'text/plain; charset=utf-8'}); res.end(err.message); }
 });
 
 server.listen(PORT, ()=> console.log('Server listening on port', PORT));

@@ -1,4 +1,4 @@
-// Frontend logic ported from original single-file dashboard.
+﻿// Frontend logic ported from original single-file dashboard.
 // Adjusted to use backend proxy at /api/fetch?u= for CSV fetching
 
 // =========================================================
@@ -41,7 +41,11 @@ const AGENDA = [
 const SPREADSHEET_ID = "1s_h8zBXKELoppqKSaSccK4jWhyZpBER4zL96PU-O7f4";
 const STATUS_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=1897496511`;
 const RIGATA_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=2087410650`;
+const RIGATA_TKB_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=1195091563`;
+const RIGATA_MFH_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=781408568`;
 const LOAD_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=1021438315`;
+const LOAD_TKB_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=1246872016`;
+const LOAD_MFH_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=110108467`;
 const DEFAULT_SHEET_URL = STATUS_SHEET_URL;
 
 // =========================================================
@@ -51,8 +55,12 @@ let sheetUrl = DEFAULT_SHEET_URL || null;
 let refreshMs = 5000;  // Update every 5 seconds untuk responsif lebih cepat
 let refreshTimer = null;
 let liveData = {};
-let rigataPanels = [];
-let loadTrend = [];
+let rigataSeremony = [];
+let rigataTKB = [];
+let rigataMFH = [];
+let loadSeremony = [];
+let loadTKB = [];
+let loadMFH = [];
 let isConnected = false;
 let lastSync = null;
 const expandedRoles = new Set();
@@ -216,6 +224,7 @@ function applyStatusFields(target, row) {
   target.statusCOS = readCell(row, 'statuscos', 'status cos', 'status_cos') || '';
   target.personilHadir = readCell(row, 'personilhadir', 'personil hadir', 'personil_hadir') || '';
   target.catatan = readCell(row, 'catatan') || '';
+  target.dayaBebanLokasi = toNumber(readCell(row, 'dayabebanw', 'daya beban (w)', 'daya beban w', 'daya_beban_w', 'dayabeban'));
   target.updateTerakhir = readCell(row, 'updateterakhir', 'update terakhir', 'update_terakhir') || '';
 }
 
@@ -247,7 +256,7 @@ function parseRigataPanels(text) {
 
   dataLines.forEach((line) => {
     const cols = splitCSVLine(line);
-    if (cols.length < 12) return;
+    if (cols.length < 14) return;
 
     const panelName = (cols[1] || '').trim();
     const lokasi = (cols[0] || '').trim() || 'Lapangan Plaza Ceremony';
@@ -272,7 +281,8 @@ function parseRigataPanels(text) {
       arusN: toNumber(cols[9]),
       temperature: toNumber(cols[10]),
       frekuensi: toNumber(cols[11]),
-      powerFactor: toNumber(cols[12])
+      powerFactor: toNumber(cols[12]),
+      catatan: (cols[13] || '').trim()
     });
   });
 
@@ -316,8 +326,12 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     const cacheBypass = (forceBypassCache || manual) ? '&t=' + Date.now() : '';
     const sheetRequests = [
       { name: 'STATUS', url: STATUS_SHEET_URL },
-      { name: 'RIGATA', url: RIGATA_SHEET_URL },
-      { name: 'LOAD', url: LOAD_SHEET_URL }
+      { name: 'RIGATA_SEREMONY', url: RIGATA_SHEET_URL },
+      { name: 'RIGATA_TKB', url: RIGATA_TKB_SHEET_URL },
+      { name: 'RIGATA_MFH', url: RIGATA_MFH_SHEET_URL },
+      { name: 'LOAD_SEREMONY', url: LOAD_SHEET_URL },
+      { name: 'LOAD_TKB', url: LOAD_TKB_SHEET_URL },
+      { name: 'LOAD_MFH', url: LOAD_MFH_SHEET_URL }
     ];
 
     const syncType = manual ? 'MANUAL' : (forceBypassCache ? 'FORCE' : 'AUTO');
@@ -356,11 +370,13 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     const statusRows = responses.find(r => r.name === 'STATUS')?.rows || [];
     const statusMap = buildLocationMap(statusRows, 'STATUS');
 
-    const rigataText = responses.find(r => r.name === 'RIGATA')?.text || '';
-    rigataPanels = parseRigataPanels(rigataText);
+    rigataSeremony = parseRigataPanels(responses.find(r => r.name === 'RIGATA_SEREMONY')?.text || '');
+    rigataTKB = parseRigataPanels(responses.find(r => r.name === 'RIGATA_TKB')?.text || '');
+    rigataMFH = parseRigataPanels(responses.find(r => r.name === 'RIGATA_MFH')?.text || '');
 
-    const loadText = responses.find(r => r.name === 'LOAD')?.text || '';
-    loadTrend = parseLoadTrend(loadText);
+    loadSeremony = parseLoadTrend(responses.find(r => r.name === 'LOAD_SEREMONY')?.text || '');
+    loadTKB = parseLoadTrend(responses.find(r => r.name === 'LOAD_TKB')?.text || '');
+    loadMFH = parseLoadTrend(responses.find(r => r.name === 'LOAD_MFH')?.text || '');
 
     let matched = 0;
     const newData = {};
@@ -379,8 +395,8 @@ async function sync(manual){ setConn('loading'); if (!sheetUrl){ setConn('demo')
     lastDataHash = combinedHash;
 
     if (matched > 0) {
-      saveCacheData({ ...newData, rigataPanels, loadTrend }, combinedHash);
-      console.log('[CACHE] Saved', matched, 'locations and', rigataPanels.length, 'rigata panels and', loadTrend.length, 'load points');
+      saveCacheData({ ...newData, rigataSeremony, rigataTKB, rigataMFH, loadSeremony, loadTKB, loadMFH }, combinedHash);
+      console.log('[CACHE] Saved', matched, 'locations and', rigataSeremony.length + rigataTKB.length + rigataMFH.length, 'rigata panels and', loadSeremony.length + loadTKB.length + loadMFH.length, 'load points');
     }
 
     isConnected = matched > 0;
@@ -422,8 +438,8 @@ function parseCSV(text){ const lines = text.replace(/\r/g,'').split('\n').filter
 function splitCSVLine(line){ const out=[]; let cur=''; let q=false; for (let i=0;i<line.length;i++){ const c = line[i]; if (q){ if (c === '"'){ if (line[i+1] === '"'){ cur+='"'; i++; } else q=false; } else cur += c; } else { if (c === '"') q = true; else if (c === ','){ out.push(cur); cur=''; } else cur += c; } } out.push(cur); return out; }
 function normKey(s){ return (s||'').toString().trim().toLowerCase().replace(/[^a-z0-9]/g,''); }
 
-function statusClass(v){ const n = normKey(v); if (n === 'normal') return 's-ok'; if (n === 'siaga') return 's-warn'; if (n === 'gangguan') return 's-crit'; return ''; }
-function overallStatus(loc){ const live = liveData[loc]; if (!isConnected || !live) return ''; const ref = REFERENCE_DATA[loc]; const vals = [live.statusPenyulang, live.statusGenset, live.statusUPS]; if (ref.cos) vals.push(live.statusCOS); const norm = vals.map(normKey); if (norm.includes('gangguan')) return 's-crit'; if (norm.some(v=>v==='siaga'||v==='')) return 's-warn'; if (norm.length && norm.every(v=>v==='normal')) return 's-ok'; return ''; }
+function statusClass(v){ const n = normKey(v || ''); if (n.includes('normal')) return 's-ok'; if (n.includes('siaga')) return 's-warn'; if (n.includes('gangguan')) return 's-crit'; return ''; }
+function overallStatus(loc){ const live = liveData[loc]; if (!isConnected || !live) return ''; const ref = REFERENCE_DATA[loc]; const vals = [live.statusPenyulang, live.statusGenset, live.statusUPS]; if (ref.cos) vals.push(live.statusCOS); const norm = vals.map(normKey); if (norm.some(v => v.includes('gangguan'))) return 's-crit'; if (norm.some(v => v.includes('siaga') || v === '')) return 's-warn'; if (norm.length && norm.every(v => v.includes('normal'))) return 's-ok'; return ''; }
 function escapeHtml(s){ return (s==null?'':s.toString()).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function renderAll(){ renderMeters(); renderBusbar(); renderCards(); renderRigata(); renderLoad(); }
@@ -455,7 +471,9 @@ function renderCard(loc){ const ref = REFERENCE_DATA[loc]; const live = liveData
   const noteHtml = (isConnected && live && live.catatan) ? `<div class="note-line"><span class="k">Catatan lapangan:</span> ${escapeHtml(live.catatan)}</div>` : '';
   const syncHtml = (isConnected && live && live.updateTerakhir) ? `<div class="sync-line">Update oleh petugas: ${escapeHtml(live.updateTerakhir)}</div>` : '';
 
-  return `\n  <div class="card ${overall}">\n    <div class="card-head">\n      <div>\n        <div class="card-tag">${ref.tag}</div>\n        <div class="card-name">${escapeHtml(loc)}</div>\n        <div class="card-kegiatan">Kegiatan: <strong>${escapeHtml(ref.kegiatan)}</strong></div>\n        <div class="card-kegiatan">${escapeHtml(ref.jadwal)}</div>\n      </div>\n      <span class="card-badge ${overall}">${overallLabel}</span>\n    </div>\n\n    <div class="card-map-wrap">\n      <img class="card-map" src="${ref.image}" data-name="${escapeHtml(loc)}" alt="Lay out lokasi kegiatan ${escapeHtml(loc)}" loading="lazy">\n      <span class="card-map-tag">Lay Out Lokasi</span>\n      <span class="card-map-zoom">⤢</span>\n    </div>\n\n    <div class="lamp-row">${lamps}</div>\n\n    <div class="spec-grid">\n      <div class="spec-item"><span class="k">Penyulang Utama</span><span class="v">${escapeHtml(ref.penyulangUtama)}</span></div>\n      <div class="spec-item"><span class="k">Penyulang Backup</span><span class="v">${escapeHtml(ref.penyulangBackup)}</span></div>\n      <div class="spec-item"><span class="k">Genset Backup</span><span class="v">${escapeHtml(ref.genset)}</span></div>\n      <div class="spec-item"><span class="k">UPS Backup</span><span class="v">${escapeHtml(ref.ups)}</span></div>\n      ${ref.cos ? `<div class="spec-item"><span class="k">COS</span><span class="v">${escapeHtml(ref.cos)}</span></div>` : ''}\n    </div>\n\n    <div class="gauge-wrap">\n      <div class="gauge-top"><span>Personil hadir</span><span class="num">${hadir!==null ? hadir : '—'} / ${ref.personilTotal}</span></div>\n      <div class="gauge-track"><div class="gauge-fill ${hadir===null?'unknown':''}" style="width:${hadir!==null?pct:100}%"></div></div>\n    </div>\n\n    <details class="roles" data-loc="${escapeHtml(loc)}">\n      <summary>Rincian personil siaga (${ref.personilTotal} orang)</summary>\n      <div class="roles-list">${rolesHtml}</div>\n    </details>\n\n    ${noteHtml}\n    ${syncHtml}\n  </div>`;
+  return `\n  <div class="card ${overall}">\n    <div class="card-head">\n      <div>\n        <div class="card-tag">${ref.tag}</div>\n        <div class="card-name">${escapeHtml(loc)}</div>\n        <div class="card-kegiatan">Kegiatan: <strong>${escapeHtml(ref.kegiatan)}</strong></div>\n        <div class="card-kegiatan">${escapeHtml(ref.jadwal)}</div>\n      </div>\n      <span class="card-badge ${overall}">${overallLabel}</span>\n    </div>\n\n    <div class="card-map-wrap">\n      <img class="card-map" src="${ref.image}" data-name="${escapeHtml(loc)}" alt="Lay out lokasi kegiatan ${escapeHtml(loc)}" loading="lazy">\n      <span class="card-map-tag">Lay Out Lokasi</span>\n      <span class="card-map-zoom">⤢</span>\n    </div>\n\n    <div class="lamp-row">${lamps}</div>\n\n    <div class="spec-grid">\n      <div class="spec-item"><span class="k">Penyulang Utama</span><span class="v">${escapeHtml(ref.penyulangUtama)}</span></div>\n      <div class="spec-item"><span class="k">Penyulang Backup</span><span class="v">${escapeHtml(ref.penyulangBackup)}</span></div>\n      <div class="spec-item"><span class="k">Genset Backup</span><span class="v">${escapeHtml(ref.genset)}</span></div>\n      <div class="spec-item"><span class="k">UPS Backup</span><span class="v">${escapeHtml(ref.ups)}</span></div>\n      ${ref.cos ? `<div class="spec-item"><span class="k">COS</span><span class="v">${escapeHtml(ref.cos)}</span></div>` : ''}\n    </div>\n\n    <div class="gauge-wrap">\n      <div class="gauge-top"><span>Personil hadir</span><span class="num">${hadir!==null ? hadir : '—'} / ${ref.personilTotal}</span></div>\n      <div class="gauge-track"><div class="gauge-fill ${hadir===null?'unknown':''}" style="width:${hadir!==null?pct:100}%"></div></div>\n    </div>\n\n    <div class="daya-beban-line"><span class="k">Daya Beban</span><span class="v">${escapeHtml((live && live.dayaBebanLokasi !== undefined && live.dayaBebanLokasi !== null && live.dayaBebanLokasi !== "") ? (Number(live.dayaBebanLokasi) > 0 ? `${Math.round(Number(live.dayaBebanLokasi)).toLocaleString("id-ID")} W` : "—") : "—")}</span></div>
+
+<details class="roles" data-loc="${escapeHtml(loc)}">\n      <summary>Rincian personil siaga (${ref.personilTotal} orang)</summary>\n      <div class="roles-list">${rolesHtml}</div>\n    </details>\n\n    ${noteHtml}\n    ${syncHtml}\n  </div>`;
 }
 
 // RIGATA Panel: 3-Phase Electrical Monitoring
@@ -463,31 +481,21 @@ function renderRigata(){
   const panel = document.getElementById('rigataPanelContent');
   if (!panel) return;
 
-  if (!rigataPanels.length) {
-    panel.innerHTML = '<div class="rigata-layout-container"><div class="rigata-bg" style="background-image:url(/images/Lapangan%20Plaza%20Ceremony.png)"></div><p style="color:var(--text-gray);font-size:12px;padding:20px;text-align:center;position:relative;z-index:10;">Menunggu data RIGATA dari spreadsheet...</p></div>';
-    return;
-  }
-
-  const positions = [
-    { top: '8%', left: '6%' },
-    { top: '8%', right: '6%' },
-    { top: '42%', left: '18%' },
-    { top: '42%', right: '18%' },
-    { bottom: '8%', left: '50%', transform: 'translateX(-50%)' }
+  const locations = [
+    { name: 'Lapangan Plaza Ceremony', data: rigataSeremony, bg: 'url(/images/SLD_JTR_PLAZA_SEREMONY_5_RIGATA.jpeg)' },
+    { name: 'Taman Kusuma Bangsa', data: rigataTKB, bg: 'url(/images/Taman%20Kusuma%20Bangsa.png)' },
+    { name: 'MFH Kemenko.3', data: rigataMFH, bg: 'url(/images/MFH%20Kemenko.3.png)' }
   ];
 
-  let html = '<div class="rigata-layout-container">';
-  html += '<div class="rigata-bg" style="background-image:url(/images/Lapangan%20Plaza%20Ceremony.png)"></div>';
-  html += '<div class="rigata-overlay">';
-
-  rigataPanels.forEach((item, index) => {
+  const renderRigataCard = (item) => {
     const vr = item.teganganR || 0, vs = item.teganganS || 0, vt = item.teganganT || 0;
     const ir = item.arusR || 0, is = item.arusS || 0, it = item.arusT || 0;
     const temp = item.temperature || 0, freq = item.frekuensi || 50, pf = item.powerFactor || 0;
-    const pos = positions[index] || { top: '50%', left: '50%' };
-    const posStyle = Object.entries(pos).map(([k, v]) => `${k}:${v}`).join(';');
+    const panelStatus = (item.catatan || '').trim();
+    const statusClassName = statusClass(panelStatus) || 's-off';
+    const noteHtml = panelStatus ? `<div class="rigata-note ${statusClassName}"><span>Status:</span> ${escapeHtml(panelStatus)}</div>` : '<div class="rigata-note"><span>Status:</span> —</div>';
 
-    html += `<div class="rigata-card" style="${posStyle}">
+    return `<div class="rigata-card">
       <div class="rigata-head">
         <div class="rigata-name">${escapeHtml(item.label)}</div>
         <div class="rigata-badge">LIVE</div>
@@ -503,11 +511,24 @@ function renderRigata(){
         <div><span>PF</span><strong>${pf.toFixed(2)}</strong></div>
         <div><span>T°C</span><strong>${temp.toFixed(0)}</strong></div>
       </div>
+      ${noteHtml}
     </div>`;
-  });
+  };
 
-  html += '</div></div>';
-  panel.innerHTML = html;
+  const columnsHtml = locations.map(({ name, data, bg }) => {
+    const cardsHtml = (data && data.length) ? data.map(item => renderRigataCard(item)).join('') : '<div class="rigata-empty">Menunggu data RIGATA...</div>';
+    return `
+      <div class="rigata-column">
+        <div class="rigata-location-label">${escapeHtml(name)}</div>
+        <div class="rigata-layout-container">
+          <div class="rigata-bg" style="background-image:${bg}"></div>
+          <div class="rigata-overlay">${cardsHtml}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  panel.innerHTML = `<div class="rigata-columns">${columnsHtml}</div>`;
 }
 
 // Load Panel: Power Monitoring & Trends
@@ -515,56 +536,75 @@ function renderLoad(){
   const panel = document.getElementById('loadPanelContent');
   if (!panel) return;
 
-  if (!loadTrend.length) {
-    panel.innerHTML = '<p style="color:var(--text-gray);font-size:12px;padding:10px;">Menunggu data Load dari spreadsheet...</p>';
-    return;
-  }
+  const locations = [
+    { name: 'Lapangan Plaza Ceremony', data: loadSeremony },
+    { name: 'Taman Kusuma Bangsa', data: loadTKB },
+    { name: 'MFH Kemenko.3', data: loadMFH }
+  ];
 
-  const chartWidth = 360, chartHeight = 140;
-  const values = loadTrend.map(p => p.dayaW);
-  const minVal = Math.min(...values, 0);
-  const maxVal = Math.max(...values, 1);
-  const span = Math.max(maxVal - minVal, 1);
-  const latest = loadTrend[loadTrend.length - 1];
+  const renderLoadChart = (trend, title) => {
+    if (!trend || !trend.length) {
+      return `
+        <div class="load-subpanel">
+          <div class="rigata-location-label">${escapeHtml(title)}</div>
+          <div class="load-empty">Menunggu data Load...</div>
+        </div>
+      `;
+    }
 
-  const points = loadTrend.map((point, index) => {
-    const x = (index / Math.max(loadTrend.length - 1, 1)) * chartWidth;
-    const y = chartHeight - ((point.dayaW - minVal) / span) * chartHeight;
-    return `${x},${y}`;
-  }).join(' ');
+    const chartWidth = 300, chartHeight = 140;
+    const values = trend.map(p => p.dayaW);
+    const minVal = Math.min(...values, 0);
+    const maxVal = Math.max(...values, 1);
+    const span = Math.max(maxVal - minVal, 1);
+    const latest = trend[trend.length - 1];
 
-  const xLabels = [0, Math.floor(loadTrend.length / 2), loadTrend.length - 1].filter((v, i, arr) => arr.indexOf(v) === i);
-  const labelHtml = xLabels.map((idx) => {
-    const item = loadTrend[idx];
-    const x = (idx / Math.max(loadTrend.length - 1, 1)) * chartWidth;
-    return `<text x="${x}" y="${chartHeight + 16}" text-anchor="middle" font-size="9" fill="var(--text-gray)">${escapeHtml(item.waktu || item.tanggal || idx + 1)}</text>`;
-  }).join('');
+    const points = trend.map((point, index) => {
+      const x = (index / Math.max(trend.length - 1, 1)) * chartWidth;
+      const y = chartHeight - ((point.dayaW - minVal) / span) * chartHeight;
+      return `${x},${y}`;
+    }).join(' ');
 
-  const html = `
-    <div class="load-stats">
-      <div class="stat-card">
-        <span class="stat-label">Daya Terakhir</span>
-        <span class="stat-value">${(latest ? latest.dayaW : 0).toFixed(0)} <span class="unit">W</span></span>
+    const formatAxisLabel = (item) => {
+      const raw = (item && (item.waktu || item.tanggal)) ? String(item.waktu || item.tanggal) : '';
+      return raw.replace(/\s+\d{2}:\d{2}(?::\d{2})?.*$/, '').trim();
+    };
+    const xLabels = [0, trend.length - 1].filter((v, i, arr) => arr.indexOf(v) === i);
+    const labelHtml = xLabels.map((idx) => {
+      const item = trend[idx];
+      const x = (idx / Math.max(trend.length - 1, 1)) * chartWidth;
+      return `<text x="${x}" y="${chartHeight + 16}" text-anchor="middle" font-size="8" fill="var(--text-gray)">${escapeHtml(formatAxisLabel(item) || (idx + 1))}</text>`;
+    }).join('');
+
+    return `
+      <div class="load-subpanel">
+        <div class="rigata-location-label">${escapeHtml(title)}</div>
+        <div class="load-stats">
+          <div class="stat-card">
+            <span class="stat-label">Daya Terakhir</span>
+            <span class="stat-value">${(latest ? latest.dayaW : 0).toFixed(0)} <span class="unit">W</span></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Update</span>
+            <span class="stat-value">${latest ? escapeHtml(latest.tanggal + ' ' + latest.waktu) : '—'}</span>
+          </div>
+        </div>
+        <div class="load-chart">
+          <div class="chart-title">Trend Daya Beban (Watt)</div>
+          <svg width="100%" height="190" viewBox="0 0 ${chartWidth} ${chartHeight + 30}" style="max-width:100%;display:block;">
+            <polyline points="${points}" fill="none" stroke="#0E7CC1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+            <line x1="0" y1="${chartHeight}" x2="${chartWidth}" y2="${chartHeight}" stroke="rgba(255,255,255,0.18)" />
+            ${labelHtml}
+          </svg>
+        </div>
       </div>
-      <div class="stat-card">
-        <span class="stat-label">Update</span>
-        <span class="stat-value">${latest ? escapeHtml(latest.tanggal + ' ' + latest.waktu) : '—'}</span>
-      </div>
-    </div>
-    <div class="load-chart">
-      <div class="chart-title">Trend Daya Beban (Watt)</div>
-      <svg width="100%" height="200" viewBox="0 0 ${chartWidth} ${chartHeight + 30}" style="max-width:100%;">
-        <polyline points="${points}" fill="none" stroke="#0E7CC1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-        <line x1="0" y1="${chartHeight}" x2="${chartWidth}" y2="${chartHeight}" stroke="rgba(255,255,255,0.18)" />
-        ${labelHtml}
-      </svg>
-    </div>
-    <div class="load-info">
-      <small>📊 Titik data: ${loadTrend.length} · ${lastSync ? lastSync.toLocaleTimeString('id-ID', {timeZone:'Asia/Makassar'}) + ' WITA' : '—'}</small>
-    </div>
-  `;
+    `;
+  };
 
+  const html = `<div class="load-columns">${locations.map(item => renderLoadChart(item.data, item.name)).join('')}</div>`;
   panel.innerHTML = html;
 }
 
 init();
+
+
