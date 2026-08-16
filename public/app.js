@@ -476,18 +476,19 @@ function renderCard(loc){ const ref = REFERENCE_DATA[loc]; const live = liveData
 <details class="roles" data-loc="${escapeHtml(loc)}">\n      <summary>Rincian personil siaga (${ref.personilTotal} orang)</summary>\n      <div class="roles-list">${rolesHtml}</div>\n    </details>\n\n    ${noteHtml}\n    ${syncHtml}\n  </div>`;
 }
 
-// RIGATA Panel: 3-Phase Electrical Monitoring
+// RIGATA Panel: 3-Phase Electrical Monitoring (+ Load Monitoring integrated)
+// Render 6 blocks vertically: RIGATA Lapangan, LOAD Lapangan, RIGATA TKB, LOAD TKB, RIGATA MFH, LOAD MFH
 function renderRigata(){
   const panel = document.getElementById('rigataPanelContent');
   if (!panel) return;
 
   const locations = [
-    { name: 'Lapangan Plaza Ceremony', data: rigataSeremony, bg: 'url(/images/SLD_JTR_PLAZA_SEREMONY_5_RIGATA.jpeg)' },
-    { name: 'Taman Kusuma Bangsa', data: rigataTKB, bg: 'url(/images/Taman%20Kusuma%20Bangsa.png)' },
-    { name: 'MFH Kemenko.3', data: rigataMFH, bg: 'url(/images/MFH%20Kemenko.3.png)' }
+    { name: 'Lapangan Plaza Ceremony', rigataData: rigataSeremony, loadData: loadSeremony, bg: 'url(/images/SLD%20JTR%20PLAZA%20SEREMONY%205%20RIGATA.jpeg)', cardCount: 5 },
+    { name: 'Taman Kusuma Bangsa', rigataData: rigataTKB, loadData: loadTKB, bg: 'url(/images/Taman%20Kusuma%20Bangsa.png)', cardCount: 1 },
+    { name: 'MFH Kemenko.3', rigataData: rigataMFH, loadData: loadMFH, bg: 'url(/images/MFH%20Kemenko.3.png)', cardCount: 1 }
   ];
 
-  const renderRigataCard = (item) => {
+  const renderRigataCard = (item, cardIndex) => {
     const vr = item.teganganR || 0, vs = item.teganganS || 0, vt = item.teganganT || 0;
     const ir = item.arusR || 0, is = item.arusS || 0, it = item.arusT || 0;
     const temp = item.temperature || 0, freq = item.frekuensi || 50, pf = item.powerFactor || 0;
@@ -495,7 +496,7 @@ function renderRigata(){
     const statusClassName = statusClass(panelStatus) || 's-off';
     const noteHtml = panelStatus ? `<div class="rigata-note ${statusClassName}"><span>Status:</span> ${escapeHtml(panelStatus)}</div>` : '<div class="rigata-note"><span>Status:</span> —</div>';
 
-    return `<div class="rigata-card">
+    return `<div class="rigata-card" data-card-index="${cardIndex}">
       <div class="rigata-head">
         <div class="rigata-name">${escapeHtml(item.label)}</div>
         <div class="rigata-badge">LIVE</div>
@@ -515,41 +516,9 @@ function renderRigata(){
     </div>`;
   };
 
-  const columnsHtml = locations.map(({ name, data, bg }) => {
-    const cardsHtml = (data && data.length) ? data.map(item => renderRigataCard(item)).join('') : '<div class="rigata-empty">Menunggu data RIGATA...</div>';
-    return `
-      <div class="rigata-column">
-        <div class="rigata-location-label">${escapeHtml(name)}</div>
-        <div class="rigata-layout-container">
-          <div class="rigata-bg" style="background-image:${bg}"></div>
-          <div class="rigata-overlay">${cardsHtml}</div>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  panel.innerHTML = `<div class="rigata-columns">${columnsHtml}</div>`;
-}
-
-// Load Panel: Power Monitoring & Trends
-function renderLoad(){
-  const panel = document.getElementById('loadPanelContent');
-  if (!panel) return;
-
-  const locations = [
-    { name: 'Lapangan Plaza Ceremony', data: loadSeremony },
-    { name: 'Taman Kusuma Bangsa', data: loadTKB },
-    { name: 'MFH Kemenko.3', data: loadMFH }
-  ];
-
   const renderLoadChart = (trend, title) => {
     if (!trend || !trend.length) {
-      return `
-        <div class="load-subpanel">
-          <div class="rigata-location-label">${escapeHtml(title)}</div>
-          <div class="load-empty">Menunggu data Load...</div>
-        </div>
-      `;
+      return `<div class="load-empty">Menunggu data Load...</div>`;
     }
 
     const chartWidth = 300, chartHeight = 140;
@@ -577,8 +546,7 @@ function renderLoad(){
     }).join('');
 
     return `
-      <div class="load-subpanel">
-        <div class="rigata-location-label">${escapeHtml(title)}</div>
+      <div class="load-chart">
         <div class="load-stats">
           <div class="stat-card">
             <span class="stat-label">Daya Terakhir</span>
@@ -589,7 +557,7 @@ function renderLoad(){
             <span class="stat-value">${latest ? escapeHtml(latest.tanggal + ' ' + latest.waktu) : '—'}</span>
           </div>
         </div>
-        <div class="load-chart">
+        <div class="chart-container">
           <div class="chart-title">Trend Daya Beban (Watt)</div>
           <svg width="100%" height="190" viewBox="0 0 ${chartWidth} ${chartHeight + 30}" style="max-width:100%;display:block;">
             <polyline points="${points}" fill="none" stroke="#0E7CC1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
@@ -601,8 +569,39 @@ function renderLoad(){
     `;
   };
 
-  const html = `<div class="load-columns">${locations.map(item => renderLoadChart(item.data, item.name)).join('')}</div>`;
-  panel.innerHTML = html;
+  // Build HTML for all 6 blocks (RIGATA + LOAD per location, vertically)
+  const blocksHtml = locations.map(({ name, rigataData, loadData, bg, cardCount }) => {
+    const rigataPart = `
+      <div class="monitoring-block">
+        <h4 class="block-title">RIGATA MONITORING · ${escapeHtml(name.toUpperCase())}</h4>
+        <div class="rigata-layout-container" data-location="${escapeHtml(name)}" data-card-count="${cardCount}">
+          <div class="rigata-bg" style="background-image:${bg}"></div>
+          <div class="rigata-overlay">
+            ${(rigataData && rigataData.length) ? rigataData.map((item, idx) => renderRigataCard(item, idx)).join('') : '<div class="rigata-empty">Menunggu data RIGATA...</div>'}
+          </div>
+        </div>
+      </div>
+    `;
+
+    const loadPart = `
+      <div class="monitoring-block">
+        <h4 class="block-title">LOAD MONITORING · ${escapeHtml(name.toUpperCase())}</h4>
+        <div class="load-monitoring-container">
+          ${renderLoadChart(loadData, name)}
+        </div>
+      </div>
+    `;
+
+    return rigataPart + loadPart;
+  }).join('');
+
+  panel.innerHTML = blocksHtml;
+}
+
+// Load Panel: now integrated into renderRigata (kept for compatibility)
+function renderLoad(){
+  // All load monitoring is now integrated into renderRigata for vertical block layout
+  // This function is kept for backward compatibility with renderAll()
 }
 
 init();
